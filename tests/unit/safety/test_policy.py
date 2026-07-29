@@ -57,7 +57,7 @@ def test_destructive_tool_blocks_ambiguous_targets_even_when_enabled() -> None:
     )
     policy = SafetyPolicy(SafetySettings(allow_destructive=True))
 
-    for path in ("/", "//", "/..", "/downloads/..", "/./", "*", "/downloads/*"):
+    for path in ("/", "//", "/..", "/downloads", "/downloads/..", "/./", "*", "/downloads/*"):
         decision = policy.evaluate(tool, {"path": path})
 
         assert decision.allowed is False

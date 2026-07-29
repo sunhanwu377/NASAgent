@@ -67,4 +67,4 @@ def _is_broad_destructive_target(path: str) -> bool:
     if not stripped.startswith("/") or stripped.startswith("//") or "//" in stripped:
         return True
     parts = stripped.split("/")[1:]
-    return not parts or any(part in {"", ".", ".."} for part in parts)
+    return len(parts) <= 1 or any(part in {"", ".", ".."} for part in parts)

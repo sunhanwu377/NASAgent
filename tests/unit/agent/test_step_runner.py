@@ -153,6 +153,60 @@ async def test_step_runner_blocks_destructive_root_target_even_when_approved() -
 
 
 @pytest.mark.asyncio
+async def test_step_runner_blocks_destructive_top_level_target_even_when_approved() -> None:
+    registry = ToolRegistry()
+    registry.register(delete_file_tool)
+    approval_provider = StaticApprovalProvider(approved=True)
+    runner = StepRunner(
+        registry=registry,
+        safety_policy=SafetyPolicy(SafetySettings(allow_destructive=True)),
+        approval_provider=approval_provider,
+    )
+    step = PlanStep(
+        id="s1",
+        description="Delete downloads collection",
+        risk="destructive",
+        expected_tools=["delete_file"],
+        tool_args={"delete_file": {"path": "/downloads"}},
+    )
+
+    result = await runner.run_step(step, ToolContext(adapter=SimulatorNasAdapter()))
+
+    assert result.success is False
+    assert result.tool_results == []
+    assert result.error is not None
+    assert "unsafe destructive target" in result.error
+    assert approval_provider.messages == []
+
+
+@pytest.mark.asyncio
+async def test_step_runner_executes_destructive_concrete_file_when_approved() -> None:
+    registry = ToolRegistry()
+    registry.register(delete_file_tool)
+    runner = StepRunner(
+        registry=registry,
+        safety_policy=SafetyPolicy(SafetySettings(allow_destructive=True)),
+        approval_provider=StaticApprovalProvider(approved=True),
+    )
+    step = PlanStep(
+        id="s1",
+        description="Delete movie file",
+        risk="destructive",
+        expected_tools=["delete_file"],
+        tool_args={"delete_file": {"path": "/downloads/movie.iso"}},
+    )
+    adapter = SimulatorNasAdapter()
+
+    result = await runner.run_step(step, ToolContext(adapter=adapter))
+
+    assert result.success is True
+    assert result.tool_results[0].tool_name == "delete_file"
+    assert [file.path for file in await adapter.list_files("/downloads")] == [
+        "/downloads/photos.zip"
+    ]
+
+
+@pytest.mark.asyncio
 async def test_step_runner_includes_destructive_target_in_approval_prompt() -> None:
     registry = ToolRegistry()
     registry.register(delete_file_tool)
@@ -221,6 +275,23 @@ async def test_step_runner_returns_failure_for_missing_tool_args() -> None:
     assert result.success is False
     assert result.tool_results == []
     assert result.error == "invalid arguments for tool list_files: missing required path"
+
+
+@pytest.mark.asyncio
+async def test_step_runner_returns_failure_for_unknown_tool() -> None:
+    runner = StepRunner(registry=ToolRegistry(), safety_policy=SafetyPolicy(SafetySettings()))
+    step = PlanStep(
+        id="s1",
+        description="Run unknown tool",
+        risk="read",
+        expected_tools=["missing_tool"],
+    )
+
+    result = await runner.run_step(step, ToolContext(adapter=SimulatorNasAdapter()))
+
+    assert result.success is False
+    assert result.tool_results == []
+    assert result.error == "unknown tool: missing_tool"
 
 
 @pytest.mark.asyncio

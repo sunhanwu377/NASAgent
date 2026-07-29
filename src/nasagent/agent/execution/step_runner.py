@@ -36,7 +36,15 @@ class StepRunner:
             )
 
         for tool_name in step.expected_tools:
-            tool = self._registry.get(tool_name)
+            try:
+                tool = self._registry.get(tool_name)
+            except KeyError:
+                return StepResult(
+                    step_id=step.id,
+                    success=False,
+                    error=f"unknown tool: {tool_name}",
+                    react_trace=react_trace,
+                )
             tool_args = step.tool_args.get(tool_name, {})
             arg_error = _validate_tool_args(tool.name, tool.handler, tool_args)
             if arg_error is not None:

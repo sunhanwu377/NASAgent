@@ -74,3 +74,29 @@ Verification:
 
 Concerns:
 - Handler exception details are intentionally suppressed to avoid leaking secrets; debugging failed tools will require local logs or targeted instrumentation.
+
+---
+
+Status: DONE
+
+Final remaining blocker fixes:
+- Blocked single-segment absolute destructive targets like `/downloads` before approval/execution.
+- Preserved destructive approval/execution for concrete nested file paths like `/downloads/movie.iso`.
+- Converted unknown planned tool names into failed `StepResult`s with sanitized errors instead of raising `KeyError`.
+
+Files changed:
+- `src/nasagent/agent/execution/step_runner.py`
+- `src/nasagent/safety/policy.py`
+- `tests/unit/agent/test_step_runner.py`
+- `tests/unit/safety/test_policy.py`
+- `.superpowers/sdd/final-fix-report.md`
+
+Verification:
+- `uv run pytest`: PASSED, 51 passed.
+- `uv run ruff check .`: PASSED.
+- `uv run ruff format --check .`: PASSED, 102 files already formatted.
+- `uv run mypy src`: PASSED, no issues found in 74 source files.
+- `uv run nasagent run "check storage" --profile simulator`: PASSED.
+
+Concerns:
+- Single-segment absolute destructive paths are now uniformly treated as broad targets; users must specify a nested concrete path for destructive file operations.
