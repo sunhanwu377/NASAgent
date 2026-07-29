@@ -21,6 +21,12 @@ uv run ruff format --check .
 uv run mypy src
 ```
 
+## Platform Foundation
+
+NASAgent includes an internal platform context that wires together registries for tools, slash-style commands, and NAS app endpoints. The current foundation keeps these registries available to the agent runtime without claiming built-in command packs, app discovery, or plugin loading yet.
+
+Later tasks are expected to connect this foundation to plugin registration, app endpoint discovery, and higher-level integrations.
+
 ## Documentation
 
 - `docs/architecture.md`
