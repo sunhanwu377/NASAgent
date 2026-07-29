@@ -5,6 +5,7 @@ from nasagent.config.settings import (
     AppEndpointSettings,
     LlmSettings,
     NasAgentSettings,
+    PluginSettings,
     load_config_file,
     load_settings,
     render_toml,
@@ -102,14 +103,34 @@ def test_settings_include_app_endpoints_and_plugins() -> None:
                 credential_key="alist.home.token",
             )
         },
-        plugins={"builtin": True},
+        plugins={"builtin": PluginSettings(enabled=True)},
     )
 
     data = settings_to_toml_data(settings)
 
     assert data["apps"]["alist.home"]["app_type"] == "alist"
     assert data["apps"]["alist.home"]["base_url"] == "http://nas.local:5244"
-    assert data["plugins"]["builtin"] is True
+    assert data["plugins"]["builtin"]["enabled"] is True
+
+
+def test_render_toml_round_trips_app_endpoints_and_plugin_settings() -> None:
+    settings = NasAgentSettings(
+        apps={
+            "alist.home": AppEndpointSettings(
+                app_type="alist",
+                base_url="http://nas.local:5244",
+                credential_key="alist.home.token",
+            )
+        },
+        plugins={"builtin": PluginSettings(enabled=True)},
+    )
+
+    output = render_toml(settings_to_toml_data(settings))
+    parsed = tomllib.loads(output)
+
+    assert parsed["apps"]["alist.home"]["app_type"] == "alist"
+    assert parsed["apps"]["alist.home"]["credential_key"] == "alist.home.token"
+    assert parsed["plugins"]["builtin"]["enabled"] is True
 
 
 def test_render_toml_outputs_sections_and_arrays() -> None:

@@ -70,8 +70,39 @@ class CredentialStore:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         lines = ["[secrets]"]
         for key in sorted(data):
-            escaped_key = key.replace('"', '\\"')
-            escaped_value = str(data[key]).replace('"', '\\"')
-            lines.append(f'"{escaped_key}" = "{escaped_value}"')
-        self.path.write_text("\n".join(lines) + "\n")
-        os.chmod(self.path, 0o600)
+            lines.append(f"{_format_toml_string(key)} = {_format_toml_string(str(data[key]))}")
+        content = "\n".join(lines) + "\n"
+        flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC | getattr(os, "O_NOFOLLOW", 0)
+        fd = os.open(self.path, flags, 0o600)
+        try:
+            os.fchmod(fd, 0o600)
+            with os.fdopen(fd, "w", encoding="utf-8") as handle:
+                fd = -1
+                handle.write(content)
+        finally:
+            if fd != -1:
+                os.close(fd)
+
+
+def _format_toml_string(value: str) -> str:
+    escaped: list[str] = []
+    for char in value:
+        if char == "\\":
+            escaped.append("\\\\")
+        elif char == '"':
+            escaped.append('\\"')
+        elif char == "\b":
+            escaped.append("\\b")
+        elif char == "\t":
+            escaped.append("\\t")
+        elif char == "\n":
+            escaped.append("\\n")
+        elif char == "\f":
+            escaped.append("\\f")
+        elif char == "\r":
+            escaped.append("\\r")
+        elif ord(char) < 0x20 or ord(char) == 0x7F:
+            escaped.append(f"\\u{ord(char):04x}")
+        else:
+            escaped.append(char)
+    return '"' + "".join(escaped) + '"'
