@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 
 class PlanStep(BaseModel):
@@ -6,6 +6,7 @@ class PlanStep(BaseModel):
     description: str
     risk: str
     expected_tools: list[str]
+    tool_args: dict[str, dict[str, object]] = Field(default_factory=dict)
 
 
 class Plan(BaseModel):
