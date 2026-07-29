@@ -551,7 +551,7 @@ def test_config_init_creates_toml_file(tmp_path: Path, monkeypatch) -> None:  # 
     result = runner.invoke(
         app,
         ["config", "init"],
-        input="openai\ngpt-4o-mini\nhttps://openai-compatible.example/v1\nsecret-api-key\n",
+        input="openai\ngpt-4o-mini\nhttps://openai-compatible.example/v1\nsecret-api-key\nn\n",
     )
 
     assert result.exit_code == 0
@@ -581,7 +581,7 @@ def test_config_init_uses_safe_defaults_when_environment_is_set(
     monkeypatch.setenv("NASAGENT_OBSERVABILITY__RUN_LOG_DIR", "/tmp/env-runs")
     runner = CliRunner()
 
-    result = runner.invoke(app, ["config", "init"], input="\n\n\n\n")
+    result = runner.invoke(app, ["config", "init"], input="\n\n\n\nn\n")
 
     assert result.exit_code == 0
     content = config_path.read_text(encoding="utf-8")
@@ -601,12 +601,25 @@ def test_config_init_omits_blank_optional_values(tmp_path: Path, monkeypatch) ->
     monkeypatch.setattr(settings_module, "DEFAULT_CONFIG_PATH", config_path)
     runner = CliRunner()
 
-    result = runner.invoke(app, ["config", "init"], input="\n\n\n\n")
+    result = runner.invoke(app, ["config", "init"], input="\n\n\n\nn\n")
 
     assert result.exit_code == 0
     content = config_path.read_text(encoding="utf-8")
     assert "base_url" not in content
     assert "api_key" not in content
+
+
+def test_config_init_can_skip_lan_discovery(cli_runner, tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setattr(settings_module, "DEFAULT_CONFIG_PATH", tmp_path / "config.toml")
+
+    result = cli_runner.invoke(
+        app,
+        ["config", "init"],
+        input="openai\ngpt-4o-mini\nhttps://api.openai.com/v1\n\nn\n",
+    )
+
+    assert result.exit_code == 0
+    assert "Scan local network" in result.output
 
 
 def test_config_init_does_not_overwrite_existing_file(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
