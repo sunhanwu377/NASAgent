@@ -57,6 +57,28 @@ def test_apps_list_command_smoke(cli_runner) -> None:  # type: ignore[no-untyped
     assert "Configured apps" in result.output
 
 
+def test_apps_list_command_reads_configured_apps(
+    cli_runner, tmp_path: Path, monkeypatch
+) -> None:  # type: ignore[no-untyped-def]
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        '[apps.home]\n'
+        'app_type = "alist"\n'
+        'base_url = "http://nas.local:5244"\n'
+        'credential_key = "alist.home.token"\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(settings_module, "DEFAULT_CONFIG_PATH", config_path)
+
+    result = cli_runner.invoke(app, ["apps", "list"])
+
+    assert result.exit_code == 0
+    assert "home" in result.output
+    assert "alist" in result.output
+    assert "http://nas.local:5244" in result.output
+    assert "alist.home.token" in result.output
+
+
 def test_plugins_list_command_smoke(cli_runner) -> None:  # type: ignore[no-untyped-def]
     result = cli_runner.invoke(app, ["plugins", "list"])
 
@@ -216,6 +238,30 @@ def test_chat_command_runs_until_exit(tmp_path: Path, monkeypatch) -> None:  # t
     assert "Task Complete" in result.output
     assert "Executed tools: get_storage_status" in result.output
     assert "Goodbye" in result.output
+
+
+def test_chat_apps_slash_lists_configured_apps(
+    tmp_path: Path, monkeypatch
+) -> None:  # type: ignore[no-untyped-def]
+    config_path = tmp_path / "config.toml"
+    config_path.write_text(
+        '[apps.home]\n'
+        'app_type = "alist"\n'
+        'base_url = "http://nas.local:5244"\n'
+        'credential_key = "alist.home.token"\n',
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(settings_module, "DEFAULT_CONFIG_PATH", config_path)
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["chat", "--profile", "simulator"], input="/apps\nexit\n")
+
+    assert result.exit_code == 0
+    assert "Configured apps:" in result.output
+    assert "home" in result.output
+    assert "alist" in result.output
+    assert "http://nas.local:5244" in result.output
+    assert "alist.home.token" in result.output
 
 
 def test_chat_command_runs_chinese_storage_task_offline(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
