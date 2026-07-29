@@ -7,7 +7,11 @@ app = typer.Typer(no_args_is_help=True)
 
 @app.command("show")
 def show() -> None:
-    typer.echo(NasAgentSettings().model_dump_json(indent=2))
+    settings = NasAgentSettings()
+    data = settings.model_dump()
+    if settings.llm.api_key:
+        data["llm"]["api_key"] = "********"
+    typer.echo(NasAgentSettings.model_validate(data).model_dump_json(indent=2))
 
 
 @app.command("init")
