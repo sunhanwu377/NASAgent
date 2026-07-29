@@ -9,6 +9,8 @@ from nasagent.cli.rendering.renderer import CliRenderer, looks_like_markdown
 from nasagent.config.settings import default_config_path, load_settings
 from nasagent.llm.messages import ChatMessage
 from nasagent.llm.openai_provider import OpenAiProvider
+from nasagent.platform.context import create_platform_context
+from nasagent.platform.plugins import PluginManager
 
 GREETING_INPUTS = {"hello", "hi", "hey", "你好", "您好", "嗨"}
 ENGLISH_TASK_ACTION_KEYWORDS = {
@@ -102,6 +104,12 @@ def chat(
             renderer.status("Goodbye")
             break
         if not task:
+            continue
+        if task.startswith("/"):
+            context = create_platform_context(settings=load_settings())
+            PluginManager(context).load_builtin()
+            result = context.commands.dispatch(task)
+            renderer.agent_message(result.message)
             continue
         if response := _local_chat_response(task):
             renderer.agent_message(response)

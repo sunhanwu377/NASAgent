@@ -9,6 +9,8 @@ Phase 1 provides an extensible package-first framework with OpenAI planning, ReA
 ```bash
 uv sync --all-extras --dev
 uv run nasagent tools list
+uv run nasagent apps list
+uv run nasagent plugins list
 uv run nasagent run "check storage" --profile simulator
 ```
 
@@ -23,9 +25,11 @@ uv run mypy src
 
 ## Platform Foundation
 
-NASAgent includes an internal platform context that wires together registries for tools, slash-style commands, and NAS app endpoints. The plugin manager loads the built-in NAS plugin into the existing tool registry path and can record entry-point plugin load failures without stopping the platform.
+NASAgent includes an internal platform context that wires together registries for tools, slash-style commands, and NAS app endpoints. The plugin manager loads the built-in NAS plugin into the existing tool registry path, registers shared slash commands, and can record entry-point plugin load failures without stopping the platform.
 
 Configuration is loaded into `NasAgentSettings`, which includes LLM, safety, observability, app endpoint, and plugin setting models. Long-lived app credentials belong in the local credential store at `~/.local/share/nasagent/secrets.toml`, while `config.toml` stores references such as `credential_key`.
+
+The CLI exposes shared platform commands through `nasagent apps list`, `nasagent plugins list`, and `nasagent containers list`. The chat REPL also dispatches slash commands such as `/help`, `/apps`, `/plugins`, `/tools`, and `/containers` before falling back to conversational or simulator task handling.
 
 Later tasks are expected to connect this foundation to app endpoint discovery and higher-level integrations.
 

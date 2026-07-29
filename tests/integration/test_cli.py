@@ -1,6 +1,7 @@
 from inspect import signature
 from pathlib import Path
 
+import pytest
 from rich.console import Console
 from typer.testing import CliRunner
 
@@ -15,6 +16,11 @@ from nasagent.config import settings as settings_module
 from nasagent.config.settings import LlmSettings, NasAgentSettings
 from nasagent.llm.base import LlmProvider
 from nasagent.tools.schemas import ToolCallResult
+
+
+@pytest.fixture
+def cli_runner() -> CliRunner:
+    return CliRunner()
 
 
 class FakeOnlineProvider(LlmProvider):
@@ -42,6 +48,20 @@ def test_tools_list_command() -> None:
 
     assert result.exit_code == 0
     assert "get_storage_status" in result.output
+
+
+def test_apps_list_command_smoke(cli_runner) -> None:  # type: ignore[no-untyped-def]
+    result = cli_runner.invoke(app, ["apps", "list"])
+
+    assert result.exit_code == 0
+    assert "Configured apps" in result.output
+
+
+def test_plugins_list_command_smoke(cli_runner) -> None:  # type: ignore[no-untyped-def]
+    result = cli_runner.invoke(app, ["plugins", "list"])
+
+    assert result.exit_code == 0
+    assert "builtin" in result.output
 
 
 def test_rich_banner_panel_includes_profile_provider_and_streaming_state() -> None:
