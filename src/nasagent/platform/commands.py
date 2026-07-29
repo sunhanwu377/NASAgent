@@ -27,12 +27,14 @@ class CommandRegistry:
         self._aliases: dict[str, str] = {}
 
     def register(self, command: CommandDefinition) -> None:
-        if command.name in self._commands:
+        if command.name in self._commands or command.name in self._aliases:
             raise ValueError(f"Command already registered: {command.name}")
-        self._commands[command.name] = command
         for alias in command.aliases:
             if alias in self._aliases or alias in self._commands:
                 raise ValueError(f"Command alias already registered: {alias}")
+
+        self._commands[command.name] = command
+        for alias in command.aliases:
             self._aliases[alias] = command.name
 
     def get(self, name: str) -> CommandDefinition | None:

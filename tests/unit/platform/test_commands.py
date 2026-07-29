@@ -32,3 +32,29 @@ def test_command_registry_rejects_duplicate_name() -> None:
 
     with pytest.raises(ValueError, match="Command already registered: apps"):
         registry.register(command)
+
+
+def test_command_registry_rejects_alias_conflict_without_partial_registration() -> None:
+    registry = CommandRegistry()
+    apps = CommandDefinition("apps", "List apps", "/apps", _handler, aliases=("app",))
+    files = CommandDefinition("files", "List files", "/files", _handler, aliases=("app",))
+    registry.register(apps)
+
+    with pytest.raises(ValueError, match="Command alias already registered: app"):
+        registry.register(files)
+
+    assert registry.get("files") is None
+    assert registry.list() == [apps]
+
+
+def test_command_registry_rejects_name_collision_with_existing_alias() -> None:
+    registry = CommandRegistry()
+    apps = CommandDefinition("apps", "List apps", "/apps", _handler, aliases=("app",))
+    app = CommandDefinition("app", "Open app", "/app", _handler)
+    registry.register(apps)
+
+    with pytest.raises(ValueError, match="Command already registered: app"):
+        registry.register(app)
+
+    assert registry.get("app") == apps
+    assert registry.list() == [apps]
