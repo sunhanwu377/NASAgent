@@ -9,7 +9,7 @@ from nasagent.safety.approvals import ApprovalProvider
 from nasagent.safety.policy import SafetyPolicy
 from nasagent.safety.risk import RiskLevel
 from nasagent.tools.base import ToolContext, ToolDefinition
-from nasagent.tools.nas.file_management import upload_file_tool
+from nasagent.tools.nas.file_management import delete_file_tool, upload_file_tool
 from nasagent.tools.nas.storage import get_storage_status_tool
 from nasagent.tools.registry import ToolRegistry
 
@@ -93,7 +93,10 @@ async def test_step_runner_does_not_execute_when_approval_denied() -> None:
 
     assert result.success is False
     assert result.error == "approval denied for tool: upload_file"
-    assert approval_provider.messages == ["Execute upload_file? Risk: write"]
+    assert approval_provider.messages == [
+        "Execute upload_file? Risk: write Target: "
+        "local_path=/tmp/source, remote_path=/upload/source"
+    ]
     assert await adapter.list_files("/upload") == []
 
 
@@ -120,6 +123,59 @@ async def test_step_runner_executes_when_approval_granted() -> None:
     assert result.success is True
     assert result.tool_results[0].tool_name == "upload_file"
     assert [file.path for file in await adapter.list_files("/upload")] == ["/upload/source"]
+
+
+@pytest.mark.asyncio
+async def test_step_runner_blocks_destructive_root_target_even_when_approved() -> None:
+    registry = ToolRegistry()
+    registry.register(delete_file_tool)
+    approval_provider = StaticApprovalProvider(approved=True)
+    runner = StepRunner(
+        registry=registry,
+        safety_policy=SafetyPolicy(SafetySettings(allow_destructive=True)),
+        approval_provider=approval_provider,
+    )
+    step = PlanStep(
+        id="s1",
+        description="Delete root",
+        risk="destructive",
+        expected_tools=["delete_file"],
+        tool_args={"delete_file": {"path": "/"}},
+    )
+
+    result = await runner.run_step(step, ToolContext(adapter=SimulatorNasAdapter()))
+
+    assert result.success is False
+    assert result.tool_results == []
+    assert result.error is not None
+    assert "unsafe destructive target" in result.error
+    assert approval_provider.messages == []
+
+
+@pytest.mark.asyncio
+async def test_step_runner_includes_destructive_target_in_approval_prompt() -> None:
+    registry = ToolRegistry()
+    registry.register(delete_file_tool)
+    approval_provider = StaticApprovalProvider(approved=False)
+    runner = StepRunner(
+        registry=registry,
+        safety_policy=SafetyPolicy(SafetySettings(allow_destructive=True)),
+        approval_provider=approval_provider,
+    )
+    step = PlanStep(
+        id="s1",
+        description="Delete file",
+        risk="destructive",
+        expected_tools=["delete_file"],
+        tool_args={"delete_file": {"path": "/homes/demo/old.txt"}},
+    )
+
+    result = await runner.run_step(step, ToolContext(adapter=SimulatorNasAdapter()))
+
+    assert result.success is False
+    assert approval_provider.messages == [
+        "Execute delete_file? Risk: destructive Target: path=/homes/demo/old.txt"
+    ]
 
 
 @pytest.mark.asyncio

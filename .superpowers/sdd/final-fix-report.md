@@ -17,3 +17,33 @@ Verification:
 
 Concerns:
 - None.
+
+---
+
+Status: DONE
+
+Final review blocker fixes:
+- Made safety evaluation argument-aware for destructive tool calls and rejected empty, root, dot, and wildcard-like destructive targets before approval.
+- Included path-like target arguments in confirmation prompts so approvals are for concrete targets.
+- Added shared CLI provider selection for `run` and `chat`, with deterministic offline fallback and `--online/--offline` control.
+- Wired online mode to construct the configured OpenAI-compatible provider via injectable provider factory for tests.
+
+Files changed:
+- `src/nasagent/agent/execution/step_runner.py`
+- `src/nasagent/cli/commands/chat.py`
+- `src/nasagent/cli/commands/run.py`
+- `src/nasagent/safety/policy.py`
+- `tests/integration/test_cli.py`
+- `tests/unit/agent/test_step_runner.py`
+- `tests/unit/safety/test_policy.py`
+- `.superpowers/sdd/final-fix-report.md`
+
+Verification:
+- `uv run pytest`: PASSED, 44 passed.
+- `uv run ruff check .`: PASSED.
+- `uv run ruff format --check .`: PASSED, 102 files already formatted.
+- `uv run mypy src`: PASSED, no issues found in 74 source files.
+- `uv run nasagent run "check storage" --profile simulator`: PASSED.
+
+Concerns:
+- Online mode constructs the configured OpenAI-compatible provider; real network behavior still depends on valid user-supplied LLM credentials.

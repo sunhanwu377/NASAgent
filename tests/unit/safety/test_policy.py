@@ -28,10 +28,24 @@ def test_destructive_tool_is_blocked_by_default() -> None:
         risk_level=RiskLevel.DESTRUCTIVE,
         handler=noop,
     )
-    decision = SafetyPolicy(SafetySettings()).evaluate(tool)
+    decision = SafetyPolicy(SafetySettings()).evaluate(tool, {"path": "/homes/demo/old.txt"})
 
     assert decision.allowed is False
     assert decision.requires_confirmation is True
+
+
+def test_destructive_tool_without_target_args_is_blocked_without_confirmation() -> None:
+    tool = ToolDefinition(
+        name="delete_file",
+        description="delete",
+        risk_level=RiskLevel.DESTRUCTIVE,
+        handler=noop,
+    )
+    decision = SafetyPolicy(SafetySettings(allow_destructive=True)).evaluate(tool)
+
+    assert decision.allowed is False
+    assert decision.requires_confirmation is False
+    assert decision.reason == "unsafe destructive target"
 
 
 def test_confirmation_required_write_is_not_allowed_without_approval() -> None:

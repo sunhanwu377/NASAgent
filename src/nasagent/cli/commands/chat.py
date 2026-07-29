@@ -4,7 +4,14 @@ from rich.console import Console
 from nasagent.cli.commands.run import execute_simulator_task
 
 
-def chat(profile: str = typer.Option("simulator", "--profile")) -> None:
+def chat(
+    profile: str = typer.Option("simulator", "--profile"),
+    online: bool | None = typer.Option(
+        None,
+        "--online/--offline",
+        help="Use configured OpenAI-compatible LLM or force deterministic offline planner.",
+    ),
+) -> None:
     if profile != "simulator":
         raise typer.BadParameter(
             "Only simulator profile is available before real UGREEN API details are configured"
@@ -23,5 +30,5 @@ def chat(profile: str = typer.Option("simulator", "--profile")) -> None:
             break
         if not task:
             continue
-        state = execute_simulator_task(task)
+        state = execute_simulator_task(task, online=online)
         console.print(f"Goal: {state.goal}\n{state.final_summary}")

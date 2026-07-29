@@ -35,7 +35,8 @@ class StepRunner:
 
         for tool_name in step.expected_tools:
             tool = self._registry.get(tool_name)
-            decision = self._safety_policy.evaluate(tool)
+            tool_args = step.tool_args.get(tool_name, {})
+            decision = self._safety_policy.evaluate(tool, tool_args)
             if decision.requires_confirmation:
                 if not decision.approval_allowed:
                     return StepResult(
@@ -52,6 +53,9 @@ class StepRunner:
                         react_trace=react_trace,
                     )
                 message = f"Execute {tool.name}? Risk: {tool.risk_level.value}"
+                target_summary = _format_target_args(tool_args)
+                if target_summary:
+                    message = f"{message} Target: {target_summary}"
                 if not self._approval_provider.confirm(message):
                     return StepResult(
                         step_id=step.id,
@@ -66,7 +70,6 @@ class StepRunner:
                     error=decision.reason,
                     react_trace=react_trace,
                 )
-            tool_args = step.tool_args.get(tool_name, {})
             result = await tool.handler(context, **tool_args)
             tool_results.append(ToolCallResult(tool_name=tool.name, result=result))
             react_trace.iterations.append(
@@ -82,3 +85,11 @@ class StepRunner:
             tool_results=tool_results,
             react_trace=react_trace,
         )
+
+
+def _format_target_args(args: dict[str, object]) -> str:
+    targets = []
+    for key, value in args.items():
+        if key.endswith("path") and isinstance(value, str):
+            targets.append(f"{key}={value}")
+    return ", ".join(targets)

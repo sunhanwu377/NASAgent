@@ -4,6 +4,9 @@ from nasagent.config.settings import SafetySettings
 from nasagent.safety.risk import RiskLevel
 from nasagent.tools.base import ToolDefinition
 
+UNSAFE_DESTRUCTIVE_TARGETS = {"", "/", ".", "./", "*", "/*", "**", "/**"}
+WILDCARD_CHARS = {"*", "?", "[", "]"}
+
 
 class SafetyDecision(BaseModel):
     allowed: bool
@@ -16,7 +19,9 @@ class SafetyPolicy:
     def __init__(self, settings: SafetySettings) -> None:
         self._settings = settings
 
-    def evaluate(self, tool: ToolDefinition) -> SafetyDecision:
+    def evaluate(
+        self, tool: ToolDefinition, args: dict[str, object] | None = None
+    ) -> SafetyDecision:
         if tool.risk_level == RiskLevel.READ:
             return SafetyDecision(
                 allowed=True,
@@ -36,6 +41,14 @@ class SafetyPolicy:
                 approval_allowed=True,
             )
         if tool.risk_level == RiskLevel.DESTRUCTIVE:
+            target = args.get("path") if args is not None else None
+            if not isinstance(target, str) or _is_broad_destructive_target(target):
+                return SafetyDecision(
+                    allowed=False,
+                    requires_confirmation=False,
+                    reason="unsafe destructive target",
+                    approval_allowed=False,
+                )
             return SafetyDecision(
                 allowed=False,
                 requires_confirmation=True,
@@ -43,3 +56,10 @@ class SafetyPolicy:
                 approval_allowed=self._settings.allow_destructive,
             )
         return SafetyDecision(allowed=False, requires_confirmation=True, reason="system operation")
+
+
+def _is_broad_destructive_target(path: str) -> bool:
+    stripped = path.strip()
+    return stripped in UNSAFE_DESTRUCTIVE_TARGETS or any(
+        char in stripped for char in WILDCARD_CHARS
+    )
