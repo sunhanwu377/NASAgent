@@ -1,11 +1,14 @@
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True)
 class SecretValue:
     name: str
-    value: str
+    value: str = field(repr=False)
+
+    def __repr__(self) -> str:
+        return f"SecretValue(name={self.name!r}, value={self.redacted()!r})"
 
     def redacted(self) -> str:
         return "********"
