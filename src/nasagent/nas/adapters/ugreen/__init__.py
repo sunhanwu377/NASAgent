@@ -1,0 +1,1 @@
+"""UGREEN NAS adapter boundary."""
