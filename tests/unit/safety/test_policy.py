@@ -32,3 +32,30 @@ def test_destructive_tool_is_blocked_by_default() -> None:
 
     assert decision.allowed is False
     assert decision.requires_confirmation is True
+
+
+def test_confirmation_required_write_is_not_allowed_without_approval() -> None:
+    tool = ToolDefinition(
+        name="upload_file",
+        description="upload",
+        risk_level=RiskLevel.WRITE,
+        handler=noop,
+    )
+    decision = SafetyPolicy(SafetySettings()).evaluate(tool)
+
+    assert decision.allowed is False
+    assert decision.requires_confirmation is True
+
+
+def test_configured_auto_write_allows_write_without_confirmation() -> None:
+    tool = ToolDefinition(
+        name="upload_file",
+        description="upload",
+        risk_level=RiskLevel.WRITE,
+        handler=noop,
+    )
+    settings = SafetySettings(allow_auto_write=True, require_confirmation_for=())
+    decision = SafetyPolicy(settings).evaluate(tool)
+
+    assert decision.allowed is True
+    assert decision.requires_confirmation is False

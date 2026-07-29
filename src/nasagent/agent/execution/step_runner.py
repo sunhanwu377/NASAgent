@@ -1,6 +1,7 @@
 from nasagent.agent.execution.react import MAX_REACT_ITERATIONS, ReActIteration, ReActTrace
 from nasagent.agent.planning.schemas import PlanStep
 from nasagent.agent.state.models import StepResult
+from nasagent.safety.approvals import ApprovalProvider
 from nasagent.safety.policy import SafetyPolicy
 from nasagent.tools.base import ToolContext
 from nasagent.tools.registry import ToolRegistry
@@ -8,9 +9,15 @@ from nasagent.tools.schemas import ToolCallResult
 
 
 class StepRunner:
-    def __init__(self, registry: ToolRegistry, safety_policy: SafetyPolicy) -> None:
+    def __init__(
+        self,
+        registry: ToolRegistry,
+        safety_policy: SafetyPolicy,
+        approval_provider: ApprovalProvider | None = None,
+    ) -> None:
         self._registry = registry
         self._safety_policy = safety_policy
+        self._approval_provider = approval_provider
 
     async def run_step(self, step: PlanStep, context: ToolContext) -> StepResult:
         tool_results: list[ToolCallResult] = []
@@ -29,18 +36,34 @@ class StepRunner:
         for tool_name in step.expected_tools:
             tool = self._registry.get(tool_name)
             decision = self._safety_policy.evaluate(tool)
-            if not decision.allowed:
+            if decision.requires_confirmation:
+                if not decision.approval_allowed:
+                    return StepResult(
+                        step_id=step.id,
+                        success=False,
+                        error=decision.reason,
+                        react_trace=react_trace,
+                    )
+                if self._approval_provider is None:
+                    return StepResult(
+                        step_id=step.id,
+                        success=False,
+                        error=f"confirmation required for tool: {tool.name}",
+                        react_trace=react_trace,
+                    )
+                message = f"Execute {tool.name}? Risk: {tool.risk_level.value}"
+                if not self._approval_provider.confirm(message):
+                    return StepResult(
+                        step_id=step.id,
+                        success=False,
+                        error=f"approval denied for tool: {tool.name}",
+                        react_trace=react_trace,
+                    )
+            elif not decision.allowed:
                 return StepResult(
                     step_id=step.id,
                     success=False,
                     error=decision.reason,
-                    react_trace=react_trace,
-                )
-            if decision.requires_confirmation:
-                return StepResult(
-                    step_id=step.id,
-                    success=False,
-                    error=f"confirmation required for tool: {tool.name}",
                     react_trace=react_trace,
                 )
             tool_args = step.tool_args.get(tool_name, {})

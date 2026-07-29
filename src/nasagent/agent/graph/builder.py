@@ -1,4 +1,6 @@
+from pathlib import Path
 from typing import Any, TypedDict, cast
+from uuid import uuid4
 
 from langgraph.graph import END, START, StateGraph
 
@@ -7,10 +9,12 @@ from nasagent.agent.graph.nodes import default_tool_registry
 from nasagent.agent.planning.planner import Planner
 from nasagent.agent.planning.schemas import Plan
 from nasagent.agent.state.models import AgentState, StepResult
+from nasagent.agent.state.store import RunStateStore
 from nasagent.agent.synthesis.synthesizer import Synthesizer
-from nasagent.config.settings import SafetySettings
+from nasagent.config.settings import NasAgentSettings, SafetySettings
 from nasagent.llm.base import LlmProvider
 from nasagent.nas.base import NasAdapter
+from nasagent.safety.approvals import ApprovalProvider
 from nasagent.safety.policy import SafetyPolicy
 from nasagent.tools.base import ToolContext
 
@@ -22,7 +26,12 @@ class GraphState(TypedDict, total=False):
     final_summary: str
 
 
-def build_agent_graph(adapter: NasAdapter, provider: LlmProvider) -> Any:
+def build_agent_graph(
+    adapter: NasAdapter,
+    provider: LlmProvider,
+    safety_settings: SafetySettings | None = None,
+    approval_provider: ApprovalProvider | None = None,
+) -> Any:
     async def plan_node(state: GraphState) -> GraphState:
         planner = Planner(provider=provider)
         return {"plan": await planner.create_plan(state["goal"])}
@@ -30,7 +39,8 @@ def build_agent_graph(adapter: NasAdapter, provider: LlmProvider) -> Any:
     async def execute_node(state: GraphState) -> GraphState:
         runner = StepRunner(
             registry=default_tool_registry(),
-            safety_policy=SafetyPolicy(SafetySettings()),
+            safety_policy=SafetyPolicy(safety_settings or SafetySettings()),
+            approval_provider=approval_provider,
         )
         context = ToolContext(adapter=adapter)
         results: list[StepResult] = []
@@ -57,12 +67,27 @@ def build_agent_graph(adapter: NasAdapter, provider: LlmProvider) -> Any:
     return graph.compile()
 
 
-async def run_agent_once(goal: str, adapter: NasAdapter, provider: LlmProvider) -> AgentState:
-    graph = build_agent_graph(adapter=adapter, provider=provider)
+async def run_agent_once(
+    goal: str,
+    adapter: NasAdapter,
+    provider: LlmProvider,
+    safety_settings: SafetySettings | None = None,
+    run_log_dir: Path | None = None,
+    approval_provider: ApprovalProvider | None = None,
+) -> AgentState:
+    graph = build_agent_graph(
+        adapter=adapter,
+        provider=provider,
+        safety_settings=safety_settings,
+        approval_provider=approval_provider,
+    )
     raw_state = cast(GraphState, await graph.ainvoke({"goal": goal}))
-    return AgentState(
+    state = AgentState(
         goal=raw_state["goal"],
         plan=raw_state["plan"],
         step_results=raw_state["step_results"],
         final_summary=raw_state["final_summary"],
     )
+    directory = run_log_dir or NasAgentSettings().observability.expanded_run_log_dir()
+    RunStateStore(directory).save(str(uuid4()), state)
+    return state

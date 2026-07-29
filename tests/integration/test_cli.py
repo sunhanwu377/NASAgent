@@ -21,6 +21,17 @@ def test_run_command_with_simulator() -> None:
     assert "Executed tools: get_storage_status" in result.output
 
 
+def test_chat_command_runs_until_exit() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["chat", "--profile", "simulator"], input="check storage\nexit\n")
+
+    assert result.exit_code == 0
+    assert "NASAgent chat" in result.output
+    assert "Executed tools: get_storage_status" in result.output
+    assert "Goodbye" in result.output
+
+
 def test_run_command_with_device_task_does_not_report_storage_plan() -> None:
     runner = CliRunner()
 

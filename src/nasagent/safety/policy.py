@@ -9,6 +9,7 @@ class SafetyDecision(BaseModel):
     allowed: bool
     requires_confirmation: bool
     reason: str
+    approval_allowed: bool = False
 
 
 class SafetyPolicy:
@@ -23,16 +24,22 @@ class SafetyPolicy:
                 reason="read operation",
             )
         if tool.risk_level == RiskLevel.WRITE:
-            requires_confirmation = tool.name in self._settings.require_confirmation_for
+            requires_confirmation = (
+                not self._settings.allow_auto_write
+                or tool.requires_confirmation
+                or tool.name in self._settings.require_confirmation_for
+            )
             return SafetyDecision(
-                allowed=self._settings.allow_auto_write or requires_confirmation,
+                allowed=not requires_confirmation,
                 requires_confirmation=requires_confirmation,
                 reason="write operation requires policy evaluation",
+                approval_allowed=True,
             )
         if tool.risk_level == RiskLevel.DESTRUCTIVE:
             return SafetyDecision(
-                allowed=self._settings.allow_destructive,
+                allowed=False,
                 requires_confirmation=True,
-                reason="destructive operation",
+                reason="destructive operation disabled by safety settings",
+                approval_allowed=self._settings.allow_destructive,
             )
         return SafetyDecision(allowed=False, requires_confirmation=True, reason="system operation")
