@@ -33,6 +33,5 @@ def test_tool_registry_rejects_duplicate_name() -> None:
     )
     registry.register(tool)
 
-
     with pytest.raises(ValueError, match="Tool already registered: status"):
         registry.register(tool)
