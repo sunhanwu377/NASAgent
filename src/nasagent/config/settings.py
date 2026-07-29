@@ -7,6 +7,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class LlmSettings(BaseModel):
     provider: str = "openai"
     model: str = "gpt-4.1-mini"
+    api_key: str | None = None
+    base_url: str | None = None
 
 
 class SafetySettings(BaseModel):
