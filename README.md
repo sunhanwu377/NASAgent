@@ -35,6 +35,8 @@ The discovery scanner has a conservative foundation for NAS service detection. m
 
 The CLI exposes shared platform commands through `nasagent apps list`, `nasagent plugins list`, and `nasagent containers list`. The chat REPL also dispatches slash commands such as `/help`, `/apps`, `/plugins`, `/tools`, and `/containers` before falling back to conversational or simulator task handling.
 
+The built-in plugin registers Docker tool definitions through the same tool registry and safety policy path as NAS tools. Docker container, image, network, volume, and Compose tools are present for planning and confirmation handling; Compose command helpers build explicit `docker compose` subprocess argument lists without invoking a shell.
+
 Later tasks are expected to connect this foundation to app endpoint discovery and higher-level integrations.
 
 ## Documentation

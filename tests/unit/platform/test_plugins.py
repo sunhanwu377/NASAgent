@@ -12,6 +12,7 @@ def test_plugin_manager_loads_builtin_plugin_tools() -> None:
     tool_names = {tool.name for tool in context.tools.list()}
     assert "storage.status" in tool_names
     assert "device.status" in tool_names
+    assert "docker.compose.up" in tool_names
     assert manager.manifests["builtin"].name == "builtin"
 
 

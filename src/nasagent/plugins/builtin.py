@@ -1,6 +1,7 @@
 from dataclasses import replace
 
 from nasagent.agent.graph.nodes import register_builtin_nas_tools
+from nasagent.integrations.docker.tools import docker_tool_definitions
 from nasagent.platform.plugins import PluginContext, PluginManifest
 from nasagent.plugins.commands import register_builtin_commands
 from nasagent.tools.nas.device_status import get_device_status_tool
@@ -18,3 +19,5 @@ def register(plugin: PluginContext) -> None:
     register_builtin_commands(plugin.platform)
     plugin.platform.tools.register(replace(get_device_status_tool, name="device.status"))
     plugin.platform.tools.register(replace(get_storage_status_tool, name="storage.status"))
+    for tool in docker_tool_definitions():
+        plugin.platform.tools.register(tool)
