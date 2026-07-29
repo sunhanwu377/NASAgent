@@ -2,6 +2,7 @@ import tomllib
 from pathlib import Path
 
 from nasagent.config.settings import (
+    AppEndpointSettings,
     LlmSettings,
     NasAgentSettings,
     load_config_file,
@@ -90,6 +91,25 @@ def test_settings_to_toml_data_redacts_api_key() -> None:
     data = settings_to_toml_data(settings, redact=True)
 
     assert data["llm"]["api_key"] == "********"
+
+
+def test_settings_include_app_endpoints_and_plugins() -> None:
+    settings = NasAgentSettings(
+        apps={
+            "alist.home": AppEndpointSettings(
+                app_type="alist",
+                base_url="http://nas.local:5244",
+                credential_key="alist.home.token",
+            )
+        },
+        plugins={"builtin": True},
+    )
+
+    data = settings_to_toml_data(settings)
+
+    assert data["apps"]["alist.home"]["app_type"] == "alist"
+    assert data["apps"]["alist.home"]["base_url"] == "http://nas.local:5244"
+    assert data["plugins"]["builtin"] is True
 
 
 def test_render_toml_outputs_sections_and_arrays() -> None:

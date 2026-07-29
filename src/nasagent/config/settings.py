@@ -30,12 +30,22 @@ class ObservabilitySettings(BaseModel):
         return Path(self.run_log_dir).expanduser()
 
 
+class AppEndpointSettings(BaseModel):
+    app_type: str
+    base_url: str
+    credential_key: str | None = None
+    frontend_url: str | None = None
+    notes: str | None = None
+
+
 class NasAgentSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="NASAGENT_", env_nested_delimiter="__")
 
     llm: LlmSettings = Field(default_factory=LlmSettings)
     safety: SafetySettings = Field(default_factory=SafetySettings)
     observability: ObservabilitySettings = Field(default_factory=ObservabilitySettings)
+    apps: dict[str, AppEndpointSettings] = Field(default_factory=dict)
+    plugins: dict[str, bool] = Field(default_factory=dict)
 
 
 def default_config_path() -> Path:
@@ -57,9 +67,15 @@ def load_settings(path: Path | None = None) -> NasAgentSettings:
 
 
 def settings_to_toml_data(settings: NasAgentSettings, *, redact: bool = False) -> dict[str, object]:
-    data = settings.model_dump(mode="python")
+    data = settings.model_dump(mode="python", exclude={"apps", "plugins"})
     if redact and data["llm"].get("api_key"):
         data["llm"]["api_key"] = "********"
+    if settings.apps:
+        data["apps"] = {
+            name: endpoint.model_dump(exclude_none=True) for name, endpoint in settings.apps.items()
+        }
+    if settings.plugins:
+        data["plugins"] = settings.plugins
     return cast(dict[str, object], _drop_none(data))
 
 

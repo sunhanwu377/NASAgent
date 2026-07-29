@@ -1,4 +1,9 @@
-from nasagent.config.secrets import SecretValue
+import os
+from pathlib import Path
+
+import pytest
+
+from nasagent.config.secrets import CredentialFilePermissionError, CredentialStore, SecretValue
 
 
 def test_secret_value_repr_redacts_secret() -> None:
@@ -8,3 +13,35 @@ def test_secret_value_repr_redacts_secret() -> None:
 
     assert "super-secret-token" not in rendered
     assert "********" in rendered
+
+
+def test_credential_store_writes_file_with_0600(tmp_path: Path) -> None:
+    path = tmp_path / "secrets.toml"
+    store = CredentialStore(path)
+
+    store.set("alist.home.token", "secret-token")
+
+    assert store.get("alist.home.token") == "secret-token"
+    assert oct(path.stat().st_mode & 0o777) == "0o600"
+
+
+def test_credential_store_redacted_summary_hides_values(tmp_path: Path) -> None:
+    path = tmp_path / "secrets.toml"
+    store = CredentialStore(path)
+    store.set("alist.home.token", "secret-token")
+
+    summary = store.redacted_summary()
+
+    assert summary == {"alist.home.token": "********"}
+    assert "secret-token" not in repr(summary)
+
+
+def test_credential_store_refuses_unsafe_permissions(tmp_path: Path) -> None:
+    path = tmp_path / "secrets.toml"
+    path.write_text('[secrets]\n"alist.home.token" = "secret-token"\n')
+    os.chmod(path, 0o644)
+
+    store = CredentialStore(path)
+
+    with pytest.raises(CredentialFilePermissionError, match="must be 0600"):
+        store.get("alist.home.token")
