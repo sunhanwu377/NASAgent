@@ -35,9 +35,9 @@ The discovery scanner has a conservative foundation for NAS service detection. m
 
 The CLI exposes shared platform commands through `nasagent apps list`, `nasagent plugins list`, and `nasagent containers list`. The chat REPL also dispatches slash commands such as `/help`, `/apps`, `/plugins`, `/tools`, and `/containers` before falling back to conversational or simulator task handling.
 
-The built-in plugin registers Docker tool definitions through the same tool registry and safety policy path as NAS tools. Docker container, image, network, volume, and Compose tools are present for planning and confirmation handling; Compose command helpers build explicit `docker compose` subprocess argument lists without invoking a shell.
+The built-in plugin registers Docker, AList, and Vaultwarden tool definitions through the same tool registry and safety policy path as NAS tools. Docker container, image, network, volume, and Compose tools are present for planning and confirmation handling; Compose command helpers build explicit `docker compose` subprocess argument lists without invoking a shell. AList and Vaultwarden tools are minimal namespaced placeholders until configured endpoint-backed handlers are wired in. Lucky currently has an endpoint/token client skeleton but no built-in tools.
 
-Later tasks are expected to connect this foundation to app endpoint discovery and higher-level integrations.
+Later tasks are expected to connect this foundation to app endpoint discovery, credential-backed app clients, and higher-level integrations.
 
 ## Documentation
 
