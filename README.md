@@ -29,6 +29,10 @@ NASAgent includes an internal platform context that wires together registries fo
 
 Configuration is loaded into `NasAgentSettings`, which includes LLM, safety, observability, app endpoint, and plugin setting models. Long-lived app credentials belong in the local credential store at `~/.local/share/nasagent/secrets.toml`, while `config.toml` stores references such as `credential_key`.
 
+`nasagent config init` writes non-sensitive settings to `~/.config/nasagent/config.toml`. If an LLM API key is entered, it is stored as `llm.api_key` in `~/.local/share/nasagent/secrets.toml`; the secrets file is created with mode `0600` and the key is not written into config TOML. `nasagent config show` keeps existing redaction behavior for sensitive values loaded into settings.
+
+The discovery scanner has a conservative foundation for NAS service detection. mDNS and SSDP discovery functions are safe no-op placeholders today, and `DiscoveryScanner.scan_hosts([...])` probes only the explicit hosts passed to it using the registered vendor and generic probe targets. It does not perform broad LAN or subnet scanning in this task.
+
 The CLI exposes shared platform commands through `nasagent apps list`, `nasagent plugins list`, and `nasagent containers list`. The chat REPL also dispatches slash commands such as `/help`, `/apps`, `/plugins`, `/tools`, and `/containers` before falling back to conversational or simulator task handling.
 
 Later tasks are expected to connect this foundation to app endpoint discovery and higher-level integrations.

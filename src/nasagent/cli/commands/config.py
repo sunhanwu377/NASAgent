@@ -3,6 +3,7 @@ import tomllib
 
 import typer
 
+from nasagent.config.secrets import CredentialStore
 from nasagent.config.settings import (
     LlmSettings,
     NasAgentSettings,
@@ -70,11 +71,12 @@ def init() -> None:
             provider=provider,
             model=model,
             base_url=base_url or None,
-            api_key=api_key or None,
         ),
         safety=default_safety,
         observability=default_observability,
     )
+    if api_key:
+        CredentialStore().set("llm.api_key", api_key)
 
     config_path.parent.mkdir(parents=True, exist_ok=True)
     config_path.write_text(render_toml(settings_to_toml_data(settings)), encoding="utf-8")

@@ -9,10 +9,12 @@ from nasagent.agent.planning.schemas import Plan, PlanStep
 from nasagent.agent.state.models import AgentState, StepResult
 from nasagent.cli.app import app
 from nasagent.cli.commands import chat as chat_command
+from nasagent.cli.commands import config as config_command
 from nasagent.cli.commands import run as run_command
 from nasagent.cli.rendering.panels import banner_panel, task_result_panel
 from nasagent.cli.rendering.renderer import CliRenderer
 from nasagent.config import settings as settings_module
+from nasagent.config.secrets import CredentialStore
 from nasagent.config.settings import LlmSettings, NasAgentSettings
 from nasagent.llm.base import LlmProvider
 from nasagent.tools.schemas import ToolCallResult
@@ -545,7 +547,13 @@ def test_config_show_redacts_api_key(tmp_path: Path, monkeypatch) -> None:  # ty
 
 def test_config_init_creates_toml_file(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     config_path = tmp_path / "config.toml"
+    secrets_path = tmp_path / "secrets.toml"
     monkeypatch.setattr(settings_module, "DEFAULT_CONFIG_PATH", config_path)
+    monkeypatch.setattr(
+        config_command,
+        "CredentialStore",
+        lambda: CredentialStore(secrets_path),
+    )
     runner = CliRunner()
 
     result = runner.invoke(
@@ -561,7 +569,11 @@ def test_config_init_creates_toml_file(tmp_path: Path, monkeypatch) -> None:  # 
     assert 'provider = "openai"' in content
     assert 'model = "gpt-4o-mini"' in content
     assert 'base_url = "https://openai-compatible.example/v1"' in content
-    assert 'api_key = "secret-api-key"' in content
+    assert "secret-api-key" not in content
+    assert "api_key" not in content
+    assert secrets_path.exists()
+    assert oct(secrets_path.stat().st_mode & 0o777) == "0o600"
+    assert '"llm.api_key" = "secret-api-key"' in secrets_path.read_text(encoding="utf-8")
     assert "[safety]" in content
     assert "[observability]" in content
     assert str(config_path) in result.output

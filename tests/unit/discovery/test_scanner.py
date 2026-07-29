@@ -1,8 +1,14 @@
 import pytest
 
 from nasagent.discovery import scanner as scanner_module
-from nasagent.discovery.models import DiscoveredService, ProbeHttpResponse
+from nasagent.discovery.models import (
+    DiscoveredService,
+    ProbeHttpResponse,
+    ProbeTarget,
+    VendorProbeResult,
+)
 from nasagent.discovery.scanner import DiscoveryOptions, DiscoveryScanner
+from nasagent.discovery.vendors.base import VendorProbeRegistry
 
 
 @pytest.mark.asyncio
@@ -82,3 +88,52 @@ async def test_scan_hosts_includes_protocol_discovery(monkeypatch) -> None:  # t
 
     assert len(services) == 1
     assert services[0].source == "mdns"
+
+
+@pytest.mark.asyncio
+async def test_scan_hosts_runs_vendor_probes_for_explicit_hosts(monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    class FakeProbe:
+        vendor = "fake"
+
+        def targets(self, host: str) -> list[ProbeTarget]:
+            return [ProbeTarget(host=host, ports=(9443,), schemes=("https",))]
+
+        async def match(self, response: ProbeHttpResponse) -> VendorProbeResult | None:
+            if response.text != "Fake NAS login":
+                return None
+            return VendorProbeResult(
+                vendor=self.vendor,
+                service_type="nas_admin",
+                admin_url=response.url,
+                login_url=response.url,
+                confidence=0.8,
+                evidence={"matched": "fake"},
+            )
+
+    async def fake_mdns_services() -> list[DiscoveredService]:
+        return []
+
+    async def fake_ssdp_services() -> list[DiscoveredService]:
+        return []
+
+    requested_urls: list[str] = []
+
+    async def fake_fetch_response(self, url: str) -> ProbeHttpResponse | None:  # noqa: ARG001
+        requested_urls.append(url)
+        return ProbeHttpResponse(url, 200, {}, "Fake NAS login")
+
+    registry = VendorProbeRegistry()
+    registry.register(FakeProbe())
+    monkeypatch.setattr(scanner_module, "discover_mdns_services", fake_mdns_services)
+    monkeypatch.setattr(scanner_module, "discover_ssdp_services", fake_ssdp_services)
+    monkeypatch.setattr(DiscoveryScanner, "_fetch_response", fake_fetch_response, raising=False)
+    scanner = DiscoveryScanner(
+        options=DiscoveryOptions(timeout_seconds=0.1, concurrency=1), vendors=registry
+    )
+
+    services = await scanner.scan_hosts(["192.168.1.2"])
+
+    assert requested_urls == ["https://192.168.1.2:9443/"]
+    assert len(services) == 1
+    assert services[0].host == "192.168.1.2"
+    assert services[0].source == "vendor"
