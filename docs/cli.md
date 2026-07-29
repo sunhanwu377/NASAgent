@@ -10,9 +10,9 @@ nasagent config init
 nasagent apps list
 nasagent plugins list
 nasagent containers list
+nasagent tools list
 nasagent profiles list
 nasagent profiles add home
-nasagent tools list
 ```
 
 `nasagent chat --profile simulator` starts a small REPL. Enter a task such as `check storage`; type `exit` or `quit` to leave.

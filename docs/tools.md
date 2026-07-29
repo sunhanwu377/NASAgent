@@ -2,6 +2,8 @@
 
 Tools are registered through `ToolRegistry`. Each tool has a name, description, risk level, async handler, confirmation flag, dry-run capability flag, and adapter capability.
 
+Tool names use `<namespace>.<resource>.<action>` where possible, for example `docker.containers.list`, `alist.fs.list`, and `vaultwarden.users.list`.
+
 The agent graph still builds its default registry with `default_tool_registry()`, which delegates built-in NAS tool registration to `register_builtin_nas_tools()`. This preserves the existing tool names used by planner output, such as `get_storage_status` and `upload_file`.
 
 The platform plugin path uses the same registration helper from the built-in plugin. Loading `PluginManager.load_builtin()` registers the same built-in NAS tools into `PlatformContext.tools`, adds dotted aliases for `device.status` and `storage.status`, registers Docker container/image/network/volume and Compose tool definitions, registers minimal AList and Vaultwarden tool definitions, and records the `builtin` plugin manifest. This path is available for platform code that creates a `PlatformContext`; it is not automatically invoked by agent graph startup yet.

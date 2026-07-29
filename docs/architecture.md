@@ -8,6 +8,8 @@ UGREEN support is represented by explicit adapter boundaries. Simulator support 
 
 ## Platform Kernel
 
+NASAgent loads a `PlatformContext` at startup. The context owns registries for tools, commands, app endpoints, and plugin metadata. Built-in capabilities and third-party plugins register through the same APIs.
+
 The platform kernel is a lightweight runtime context plus explicit plugin loading, not a full application marketplace or app discovery system. `PlatformContext` groups the supplied `NasAgentSettings` with registries for tools, slash commands, and app endpoints.
 
 `create_platform_context(settings=...)` is the current startup entry point for this kernel. It keeps the loaded settings object, creates new `ToolRegistry`, `CommandRegistry`, and `AppRegistry` instances, and hydrates `AppRegistry` from configured `settings.apps` endpoints. Code that needs built-in NAS tools or slash commands must either use the existing agent graph default registry path or load the built-in plugin with `PluginManager.load_builtin()`.
@@ -23,3 +25,12 @@ Current plugin data flow: `PluginManager` receives a `PlatformContext`. `load_bu
 Current command data flow: `nasagent.plugins.commands.register_builtin_commands()` registers `/help`, `/apps`, `/plugins`, `/tools`, and `/containers`. CLI command wrappers create a platform context from loaded settings, load the built-in plugin, dispatch the matching slash command, and print the `CommandResult.message`. The chat REPL uses the same path when input starts with `/`, before local greeting, conversational LLM, or simulator execution handling.
 
 Current runtime data flow: startup calls `create_platform_context(settings=...)`, and the resulting `PlatformContext` becomes the shared container that later code can populate with tools, commands, plugins, and additional app endpoints. Configured app endpoints are available immediately in `context.apps`; credential lookup, automatic plugin loading during CLI/agent startup, and app endpoint discovery beyond settings/config-init are not wired into startup yet.
+
+## Data Flow
+
+1. CLI or chat starts.
+2. Settings, profiles, app endpoints, and credentials are loaded.
+3. Built-in and entry point plugins register capabilities.
+4. CLI commands, chat slash commands, and planner-selected tools resolve through registries.
+5. Agent-callable tools execute through `StepRunner` and `SafetyPolicy`.
+6. Logs and UI output use redaction for sensitive values.

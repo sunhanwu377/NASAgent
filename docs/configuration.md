@@ -2,6 +2,11 @@
 
 Default configuration belongs at `~/.config/nasagent/config.toml`. Local persisted secrets belong at `~/.local/share/nasagent/secrets.toml`. Runtime logs belong under `~/.nasagent/runs/` by default.
 
+- Non-sensitive config path: `~/.config/nasagent/config.toml`
+- Sensitive secrets path: `~/.local/share/nasagent/secrets.toml`
+- Secrets file mode: `0600`
+- Display output is redacted by default.
+
 Create the first config file with:
 
 ```bash
