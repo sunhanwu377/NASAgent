@@ -1,10 +1,17 @@
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from importlib.metadata import entry_points
+from typing import Protocol
 
 from nasagent.platform.context import PlatformContext
 
 PluginRegister = Callable[["PluginContext"], None]
+
+
+class PluginEntryPoint(Protocol):
+    name: str
+
+    def load(self) -> PluginRegister: ...
 
 
 @dataclass(frozen=True)
@@ -45,7 +52,7 @@ class PluginManager:
         if plugin_context.manifest is not None:
             self.register_manifest(plugin_context.manifest)
 
-    def load_entry_points(self, *, entry_points: Iterable[object] | None = None) -> None:
+    def load_entry_points(self, *, entry_points: Iterable[PluginEntryPoint] | None = None) -> None:
         discovered = entry_points
         if discovered is None:
             discovered = entry_points_select()
@@ -61,5 +68,5 @@ class PluginManager:
                 self.errors.append(PluginLoadError(plugin=name, message=str(exc)))
 
 
-def entry_points_select() -> Iterable[object]:
+def entry_points_select() -> Iterable[PluginEntryPoint]:
     return entry_points(group="nasagent.plugins")

@@ -62,8 +62,7 @@ def init() -> None:
                 typer.echo(f"- {service.service_type}: {url}")
         else:
             typer.echo(
-                "No NAS services discovered. "
-                "You can add app endpoints manually in config.toml."
+                "No NAS services discovered. You can add app endpoints manually in config.toml."
             )
 
     settings = NasAgentSettings(

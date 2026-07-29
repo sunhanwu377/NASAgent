@@ -59,12 +59,10 @@ def test_apps_list_command_smoke(cli_runner) -> None:  # type: ignore[no-untyped
     assert "Configured apps" in result.output
 
 
-def test_apps_list_command_reads_configured_apps(
-    cli_runner, tmp_path: Path, monkeypatch
-) -> None:  # type: ignore[no-untyped-def]
+def test_apps_list_command_reads_configured_apps(cli_runner, tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     config_path = tmp_path / "config.toml"
     config_path.write_text(
-        '[apps.home]\n'
+        "[apps.home]\n"
         'app_type = "alist"\n'
         'base_url = "http://nas.local:5244"\n'
         'credential_key = "alist.home.token"\n',
@@ -242,12 +240,10 @@ def test_chat_command_runs_until_exit(tmp_path: Path, monkeypatch) -> None:  # t
     assert "Goodbye" in result.output
 
 
-def test_chat_apps_slash_lists_configured_apps(
-    tmp_path: Path, monkeypatch
-) -> None:  # type: ignore[no-untyped-def]
+def test_chat_apps_slash_lists_configured_apps(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     config_path = tmp_path / "config.toml"
     config_path.write_text(
-        '[apps.home]\n'
+        "[apps.home]\n"
         'app_type = "alist"\n'
         'base_url = "http://nas.local:5244"\n'
         'credential_key = "alist.home.token"\n',

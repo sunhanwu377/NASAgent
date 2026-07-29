@@ -1,7 +1,7 @@
 from collections.abc import Sequence
 from typing import Any
 
-from nasagent.safety.policy import RiskLevel
+from nasagent.safety.risk import RiskLevel
 from nasagent.tools.base import ToolDefinition
 
 

@@ -2,7 +2,8 @@ import pytest
 
 from nasagent.config.settings import SafetySettings
 from nasagent.integrations.docker.tools import docker_tool_definitions
-from nasagent.safety.policy import RiskLevel, SafetyPolicy
+from nasagent.safety.policy import SafetyPolicy
+from nasagent.safety.risk import RiskLevel
 
 
 def test_docker_tool_definitions_include_compose_system_tools() -> None:

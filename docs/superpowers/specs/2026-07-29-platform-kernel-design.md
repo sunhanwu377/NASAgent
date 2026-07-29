@@ -165,11 +165,9 @@ class VendorProbeResult:
 class VendorProbe(Protocol):
     vendor: str
 
-    def targets(self, host: str) -> list[ProbeTarget]:
-        ...
+    def targets(self, host: str) -> list[ProbeTarget]: ...
 
-    async def match(self, response: ProbeHttpResponse) -> VendorProbeResult | None:
-        ...
+    async def match(self, response: ProbeHttpResponse) -> VendorProbeResult | None: ...
 ```
 
 Initial built-in probes:
