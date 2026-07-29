@@ -10,8 +10,7 @@ from nasagent.tools.nas.storage import get_storage_status_tool
 from nasagent.tools.registry import ToolRegistry
 
 
-def default_tool_registry() -> ToolRegistry:
-    registry = ToolRegistry()
+def register_builtin_nas_tools(registry: ToolRegistry) -> None:
     for tool in [
         get_device_status_tool,
         get_storage_status_tool,
@@ -22,4 +21,13 @@ def default_tool_registry() -> ToolRegistry:
         delete_file_tool,
     ]:
         registry.register(tool)
-    return registry
+
+
+def default_tool_registry() -> ToolRegistry:
+    from nasagent.config.settings import NasAgentSettings
+    from nasagent.platform.context import create_platform_context
+    from nasagent.platform.plugins import load_platform_plugins
+
+    context = create_platform_context(settings=NasAgentSettings())
+    load_platform_plugins(context)
+    return context.tools

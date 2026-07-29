@@ -1,7 +1,9 @@
+import asyncio
 import tomllib
 
 import typer
 
+from nasagent.config.secrets import CredentialStore
 from nasagent.config.settings import (
     LlmSettings,
     NasAgentSettings,
@@ -12,6 +14,7 @@ from nasagent.config.settings import (
     render_toml,
     settings_to_toml_data,
 )
+from nasagent.discovery.scanner import DiscoveryScanner
 
 app = typer.Typer(no_args_is_help=True)
 
@@ -41,17 +44,38 @@ def init() -> None:
     model = typer.prompt("LLM model", default=default_llm.model)
     base_url = typer.prompt("LLM base URL (optional)", default="")
     api_key = typer.prompt("LLM API key (optional)", default="", hide_input=True)
+    scan_lan = typer.confirm("Scan local network for NAS services?", default=False)
+    if scan_lan:
+        typer.echo(
+            "LAN discovery is enabled. "
+            "Protocol scanners and vendor probes will run with safe limits."
+        )
+        services = asyncio.run(DiscoveryScanner().scan_hosts([]))
+        if services:
+            typer.echo("Discovered NAS services:")
+            for service in services:
+                url = (
+                    service.login_url
+                    or service.admin_url
+                    or f"{service.scheme}://{service.host}:{service.port}/"
+                )
+                typer.echo(f"- {service.service_type}: {url}")
+        else:
+            typer.echo(
+                "No NAS services discovered. You can add app endpoints manually in config.toml."
+            )
 
     settings = NasAgentSettings(
         llm=LlmSettings(
             provider=provider,
             model=model,
             base_url=base_url or None,
-            api_key=api_key or None,
         ),
         safety=default_safety,
         observability=default_observability,
     )
+    if api_key:
+        CredentialStore().set("llm.api_key", api_key)
 
     config_path.parent.mkdir(parents=True, exist_ok=True)
     config_path.write_text(render_toml(settings_to_toml_data(settings)), encoding="utf-8")

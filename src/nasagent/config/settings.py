@@ -5,6 +5,8 @@ from typing import Any, cast
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, EnvSettingsSource, SettingsConfigDict
 
+from nasagent.config.secrets import CredentialStore
+
 DEFAULT_CONFIG_PATH = Path("~/.config/nasagent/config.toml")
 
 
@@ -30,12 +32,26 @@ class ObservabilitySettings(BaseModel):
         return Path(self.run_log_dir).expanduser()
 
 
+class AppEndpointSettings(BaseModel):
+    app_type: str
+    base_url: str
+    credential_key: str | None = None
+    frontend_url: str | None = None
+    notes: str | None = None
+
+
+class PluginSettings(BaseModel):
+    enabled: bool = True
+
+
 class NasAgentSettings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="NASAGENT_", env_nested_delimiter="__")
 
     llm: LlmSettings = Field(default_factory=LlmSettings)
     safety: SafetySettings = Field(default_factory=SafetySettings)
     observability: ObservabilitySettings = Field(default_factory=ObservabilitySettings)
+    apps: dict[str, AppEndpointSettings] = Field(default_factory=dict)
+    plugins: dict[str, PluginSettings] = Field(default_factory=dict)
 
 
 def default_config_path() -> Path:
@@ -50,30 +66,60 @@ def load_config_file(path: Path | None = None) -> dict[str, object]:
         return tomllib.load(config_file)
 
 
-def load_settings(path: Path | None = None) -> NasAgentSettings:
+def load_settings(
+    path: Path | None = None,
+    *,
+    credential_store: CredentialStore | None = None,
+) -> NasAgentSettings:
     data = load_config_file(path)
     _merge_dict(data, EnvSettingsSource(NasAgentSettings)())
-    return NasAgentSettings.model_validate(data)
+    settings = NasAgentSettings.model_validate(data)
+    if settings.llm.api_key:
+        return settings
+    stored_api_key = (credential_store or CredentialStore()).get("llm.api_key")
+    if stored_api_key is None:
+        return settings
+    return settings.model_copy(
+        update={"llm": settings.llm.model_copy(update={"api_key": stored_api_key})}
+    )
 
 
 def settings_to_toml_data(settings: NasAgentSettings, *, redact: bool = False) -> dict[str, object]:
-    data = settings.model_dump(mode="python")
+    data = settings.model_dump(mode="python", exclude={"apps", "plugins"})
     if redact and data["llm"].get("api_key"):
         data["llm"]["api_key"] = "********"
+    if settings.apps:
+        data["apps"] = {
+            name: endpoint.model_dump(exclude_none=True) for name, endpoint in settings.apps.items()
+        }
+    if settings.plugins:
+        data["plugins"] = {
+            name: plugin.model_dump(exclude_none=True) for name, plugin in settings.plugins.items()
+        }
     return cast(dict[str, object], _drop_none(data))
 
 
 def render_toml(data: dict[str, object]) -> str:
     lines: list[str] = []
-    for section_name, section_values in data.items():
-        if not isinstance(section_values, dict):
-            continue
+    _append_toml_sections(lines, (), data)
+    return "\n".join(lines) + "\n"
+
+
+def _append_toml_sections(
+    lines: list[str], prefix: tuple[str, ...], values: dict[str, object]
+) -> None:
+    scalar_items = {key: value for key, value in values.items() if not isinstance(value, dict)}
+    nested_items = {key: value for key, value in values.items() if isinstance(value, dict)}
+
+    if prefix and (scalar_items or not nested_items):
         if lines:
             lines.append("")
-        lines.append(f"[{section_name}]")
-        for key, value in section_values.items():
-            lines.append(f"{key} = {_format_toml_value(value)}")
-    return "\n".join(lines) + "\n"
+        lines.append(f"[{_format_toml_section_path(prefix)}]")
+        for key, value in scalar_items.items():
+            lines.append(f"{_format_toml_key(key)} = {_format_toml_value(value)}")
+
+    for key, value in nested_items.items():
+        _append_toml_sections(lines, (*prefix, key), value)
 
 
 def _drop_none(value: Any) -> Any:
@@ -105,6 +151,16 @@ def _format_toml_value(value: object) -> str:
     if isinstance(value, tuple | list):
         return "[" + ", ".join(_format_toml_value(item) for item in value) + "]"
     raise TypeError(f"Unsupported TOML value: {value!r}")
+
+
+def _format_toml_section_path(parts: tuple[str, ...]) -> str:
+    return ".".join(_format_toml_key(part) for part in parts)
+
+
+def _format_toml_key(value: str) -> str:
+    if value and all(char.isalnum() or char in "_-" for char in value):
+        return value
+    return _format_toml_string(value)
 
 
 def _format_toml_string(value: str) -> str:

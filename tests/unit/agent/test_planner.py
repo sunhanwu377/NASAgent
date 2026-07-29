@@ -39,3 +39,14 @@ async def test_planner_prompt_includes_exact_schema_and_available_tools() -> Non
     assert '"steps"' in system_prompt
     assert "get_storage_status" in system_prompt
     assert "Do not invent NAS device state" in system_prompt
+
+
+@pytest.mark.asyncio
+async def test_planner_prompt_accepts_dynamic_tool_names() -> None:
+    provider = FakeProvider()
+    planner = Planner(provider=provider, tool_names=("docker.containers.list",))
+
+    await planner.create_plan("list containers")
+
+    system_prompt = provider.messages[0].content
+    assert "docker.containers.list" in system_prompt

@@ -1,9 +1,12 @@
 import tomllib
 from pathlib import Path
 
+from nasagent.config.secrets import CredentialStore
 from nasagent.config.settings import (
+    AppEndpointSettings,
     LlmSettings,
     NasAgentSettings,
+    PluginSettings,
     load_config_file,
     load_settings,
     render_toml,
@@ -76,6 +79,28 @@ def test_environment_overrides_config_file_values(tmp_path: Path, monkeypatch) -
     assert settings.llm.model == "env-model"
 
 
+def test_load_settings_falls_back_to_credential_store_api_key(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.toml"
+    config_path.write_text('[llm]\nmodel = "file-model"\n', encoding="utf-8")
+    store = CredentialStore(tmp_path / "secrets.toml")
+    store.set("llm.api_key", "stored-api-key")
+
+    settings = load_settings(config_path, credential_store=store)
+
+    assert settings.llm.api_key == "stored-api-key"
+
+
+def test_load_settings_preserves_explicit_api_key_over_credential_store(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.toml"
+    config_path.write_text('[llm]\napi_key = "file-key"\n', encoding="utf-8")
+    store = CredentialStore(tmp_path / "secrets.toml")
+    store.set("llm.api_key", "stored-api-key")
+
+    settings = load_settings(config_path, credential_store=store)
+
+    assert settings.llm.api_key == "file-key"
+
+
 def test_settings_to_toml_data_omits_unset_optional_values() -> None:
     settings = NasAgentSettings(llm=LlmSettings(api_key=None, base_url=None))
 
@@ -90,6 +115,45 @@ def test_settings_to_toml_data_redacts_api_key() -> None:
     data = settings_to_toml_data(settings, redact=True)
 
     assert data["llm"]["api_key"] == "********"
+
+
+def test_settings_include_app_endpoints_and_plugins() -> None:
+    settings = NasAgentSettings(
+        apps={
+            "alist.home": AppEndpointSettings(
+                app_type="alist",
+                base_url="http://nas.local:5244",
+                credential_key="alist.home.token",
+            )
+        },
+        plugins={"builtin": PluginSettings(enabled=True)},
+    )
+
+    data = settings_to_toml_data(settings)
+
+    assert data["apps"]["alist.home"]["app_type"] == "alist"
+    assert data["apps"]["alist.home"]["base_url"] == "http://nas.local:5244"
+    assert data["plugins"]["builtin"]["enabled"] is True
+
+
+def test_render_toml_round_trips_app_endpoints_and_plugin_settings() -> None:
+    settings = NasAgentSettings(
+        apps={
+            "alist.home": AppEndpointSettings(
+                app_type="alist",
+                base_url="http://nas.local:5244",
+                credential_key="alist.home.token",
+            )
+        },
+        plugins={"builtin": PluginSettings(enabled=True)},
+    )
+
+    output = render_toml(settings_to_toml_data(settings))
+    parsed = tomllib.loads(output)
+
+    assert parsed["apps"]["alist.home"]["app_type"] == "alist"
+    assert parsed["apps"]["alist.home"]["credential_key"] == "alist.home.token"
+    assert parsed["plugins"]["builtin"]["enabled"] is True
 
 
 def test_render_toml_outputs_sections_and_arrays() -> None:
