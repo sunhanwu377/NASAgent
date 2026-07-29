@@ -1,3 +1,5 @@
+import pytest
+
 from nasagent.config.settings import SafetySettings
 from nasagent.integrations.docker.tools import docker_tool_definitions
 from nasagent.safety.policy import RiskLevel, SafetyPolicy
@@ -17,6 +19,14 @@ def test_compose_args_are_explicit() -> None:
     args = compose_command_args("up", compose_file="compose.yml")
 
     assert args == ["docker", "compose", "-f", "compose.yml", "up", "-d"]
+
+
+@pytest.mark.parametrize("compose_file", ["/tmp/compose.yml", "../compose.yml"])
+def test_compose_args_reject_disallowed_paths(compose_file: str) -> None:
+    from nasagent.integrations.docker.client import compose_command_args
+
+    with pytest.raises(ValueError, match="compose file path"):
+        compose_command_args("up", compose_file=compose_file)
 
 
 def test_docker_compose_tools_require_safety_confirmation() -> None:
