@@ -8,7 +8,9 @@ Create the first config file with:
 uv run nasagent config init
 ```
 
-The init command creates `~/.config/nasagent/config.toml` when it does not already exist and guides you through LLM configuration. Existing config files are not overwritten.
+The init command creates `~/.config/nasagent/config.toml` when it does not already exist and guides you through LLM configuration. Existing config files are not overwritten. Non-sensitive LLM settings are written to config TOML. If you enter an LLM API key, `config init` stores it through `CredentialStore` as `llm.api_key` in `~/.local/share/nasagent/secrets.toml`; it is not written to `config.toml`.
+
+`config init` also asks whether to scan the local network for NAS services. The default is no scan. When enabled, the current implementation runs conservative discovery plumbing with safe limits: mDNS and SSDP discovery functions are placeholders that return no services today, and vendor probes only run for explicit hosts supplied to `DiscoveryScanner.scan_hosts(hosts)`. `config init` does not perform broad subnet or aggressive LAN scanning. If no service is discovered, add app endpoints manually in `config.toml`.
 
 Show the effective configuration with:
 
@@ -16,7 +18,7 @@ Show the effective configuration with:
 uv run nasagent config show
 ```
 
-`config show` prints TOML and redacts `llm.api_key`.
+`config show` prints TOML and redacts `llm.api_key` if it is present in loaded settings.
 
 Example config:
 
@@ -25,7 +27,6 @@ Example config:
 provider = "openai"
 model = "gpt-4.1-mini"
 base_url = "https://api.openai.com/v1"
-api_key = "your-api-key"
 
 [safety]
 default_mode = "confirm_destructive"
@@ -46,7 +47,7 @@ credential_key = "alist.home.token"
 enabled = true
 ```
 
-Secrets must not be committed. Store secret values in `~/.local/share/nasagent/secrets.toml`, which `CredentialStore` creates and reads only with `0600` permissions. Store non-secret references in config, for example an app endpoint `credential_key` that points to a credential-store entry. System keyring support can be added later without changing adapter interfaces.
+Secrets must not be committed and should not be placed in `config.toml`. Store secret values in `~/.local/share/nasagent/secrets.toml`, which `CredentialStore` creates and reads only with `0600` permissions. `config init` stores an entered LLM API key as `llm.api_key`. Store non-secret references in config, for example an app endpoint `credential_key` that points to a credential-store entry. System keyring support can be added later without changing adapter interfaces.
 
 Environment variables use the `NASAGENT_` prefix and `__` for nested fields, for example `NASAGENT_LLM__API_KEY` or `NASAGENT_OBSERVABILITY__RUN_LOG_DIR`. Environment variables override values from `config.toml`.
 

@@ -30,3 +30,11 @@
 - GREEN evidence: both focused tests passed after the fixes.
 - Verification: `uv run pytest tests/unit/discovery/test_scanner.py tests/integration/test_cli.py -v` passed with 40 tests; `uv run ruff check src/nasagent/discovery src/nasagent/cli/commands/config.py tests/unit/discovery tests/integration/test_cli.py` passed.
 - Concerns: mDNS and SSDP remain intentional no-op placeholders; discovery only probes explicit hosts passed to `scan_hosts`.
+
+## Task 6 Documentation Review Fixes
+
+- Changed `docs/configuration.md` to remove the LLM API key from the `config.toml` example and document that entered LLM API keys are stored through `CredentialStore` in `~/.local/share/nasagent/secrets.toml` with `0600` permissions.
+- Changed `docs/configuration.md` to describe the `nasagent config init` discovery prompt, no-scan default, conservative placeholder mDNS/SSDP behavior, explicit-host vendor probe scope, and manual app endpoint fallback.
+- Changed `docs/architecture.md` to describe the Task 6 configuration and discovery/config-init data flow without claiming complete mDNS/SSDP or broad LAN scanning support.
+- Verification: `git diff --check` passed. A targeted docs review confirmed the permanent configuration and architecture docs no longer show LLM API keys in `config.toml` examples and now document the Task 6 config-init/discovery flow.
+- Concerns: none.
