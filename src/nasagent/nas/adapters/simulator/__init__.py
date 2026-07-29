@@ -1,0 +1,1 @@
+"""Simulator NAS adapter."""
