@@ -9,7 +9,7 @@ from nasagent.safety.approvals import ApprovalProvider
 from nasagent.safety.policy import SafetyPolicy
 from nasagent.safety.risk import RiskLevel
 from nasagent.tools.base import ToolContext, ToolDefinition
-from nasagent.tools.nas.file_management import delete_file_tool, upload_file_tool
+from nasagent.tools.nas.file_management import delete_file_tool, list_files_tool, upload_file_tool
 from nasagent.tools.nas.storage import get_storage_status_tool
 from nasagent.tools.registry import ToolRegistry
 
@@ -202,6 +202,45 @@ async def test_step_runner_passes_planned_tool_arguments() -> None:
 
     assert result.success is True
     assert result.tool_results[0].result["path"] == "/homes"
+
+
+@pytest.mark.asyncio
+async def test_step_runner_returns_failure_for_missing_tool_args() -> None:
+    registry = ToolRegistry()
+    registry.register(list_files_tool)
+    runner = StepRunner(registry=registry, safety_policy=SafetyPolicy(SafetySettings()))
+    step = PlanStep(
+        id="s1",
+        description="List files",
+        risk="read",
+        expected_tools=["list_files"],
+    )
+
+    result = await runner.run_step(step, ToolContext(adapter=SimulatorNasAdapter()))
+
+    assert result.success is False
+    assert result.tool_results == []
+    assert result.error == "invalid arguments for tool list_files: missing required path"
+
+
+@pytest.mark.asyncio
+async def test_step_runner_executes_list_files_with_args() -> None:
+    registry = ToolRegistry()
+    registry.register(list_files_tool)
+    runner = StepRunner(registry=registry, safety_policy=SafetyPolicy(SafetySettings()))
+    step = PlanStep(
+        id="s1",
+        description="List files",
+        risk="read",
+        expected_tools=["list_files"],
+        tool_args={"list_files": {"path": "/downloads"}},
+    )
+
+    result = await runner.run_step(step, ToolContext(adapter=SimulatorNasAdapter()))
+
+    assert result.success is True
+    assert result.tool_results[0].tool_name == "list_files"
+    assert "files" in result.tool_results[0].result
 
 
 @pytest.mark.asyncio

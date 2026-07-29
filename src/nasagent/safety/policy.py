@@ -60,6 +60,11 @@ class SafetyPolicy:
 
 def _is_broad_destructive_target(path: str) -> bool:
     stripped = path.strip()
-    return stripped in UNSAFE_DESTRUCTIVE_TARGETS or any(
-        char in stripped for char in WILDCARD_CHARS
-    )
+    if stripped in UNSAFE_DESTRUCTIVE_TARGETS:
+        return True
+    if stripped != path or any(char in stripped for char in WILDCARD_CHARS):
+        return True
+    if not stripped.startswith("/") or stripped.startswith("//") or "//" in stripped:
+        return True
+    parts = stripped.split("/")[1:]
+    return not parts or any(part in {"", ".", ".."} for part in parts)

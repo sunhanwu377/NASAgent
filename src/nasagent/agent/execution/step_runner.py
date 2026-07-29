@@ -1,9 +1,11 @@
+from inspect import Parameter, signature
+
 from nasagent.agent.execution.react import MAX_REACT_ITERATIONS, ReActIteration, ReActTrace
 from nasagent.agent.planning.schemas import PlanStep
 from nasagent.agent.state.models import StepResult
 from nasagent.safety.approvals import ApprovalProvider
 from nasagent.safety.policy import SafetyPolicy
-from nasagent.tools.base import ToolContext
+from nasagent.tools.base import ToolContext, ToolHandler
 from nasagent.tools.registry import ToolRegistry
 from nasagent.tools.schemas import ToolCallResult
 
@@ -36,6 +38,14 @@ class StepRunner:
         for tool_name in step.expected_tools:
             tool = self._registry.get(tool_name)
             tool_args = step.tool_args.get(tool_name, {})
+            arg_error = _validate_tool_args(tool.name, tool.handler, tool_args)
+            if arg_error is not None:
+                return StepResult(
+                    step_id=step.id,
+                    success=False,
+                    error=arg_error,
+                    react_trace=react_trace,
+                )
             decision = self._safety_policy.evaluate(tool, tool_args)
             if decision.requires_confirmation:
                 if not decision.approval_allowed:
@@ -70,7 +80,15 @@ class StepRunner:
                     error=decision.reason,
                     react_trace=react_trace,
                 )
-            result = await tool.handler(context, **tool_args)
+            try:
+                result = await tool.handler(context, **tool_args)
+            except Exception:
+                return StepResult(
+                    step_id=step.id,
+                    success=False,
+                    error=f"tool handler failed for tool {tool.name}",
+                    react_trace=react_trace,
+                )
             tool_results.append(ToolCallResult(tool_name=tool.name, result=result))
             react_trace.iterations.append(
                 ReActIteration(
@@ -93,3 +111,29 @@ def _format_target_args(args: dict[str, object]) -> str:
         if key.endswith("path") and isinstance(value, str):
             targets.append(f"{key}={value}")
     return ", ".join(targets)
+
+
+def _validate_tool_args(
+    tool_name: str, handler: ToolHandler, args: dict[str, object]
+) -> str | None:
+    handler_signature = signature(handler)
+    parameters = list(handler_signature.parameters.values())[1:]
+    required = [
+        parameter.name
+        for parameter in parameters
+        if parameter.default is Parameter.empty
+        and parameter.kind in {Parameter.POSITIONAL_OR_KEYWORD, Parameter.KEYWORD_ONLY}
+    ]
+    missing = [name for name in required if name not in args]
+    if missing:
+        return f"invalid arguments for tool {tool_name}: missing required {', '.join(missing)}"
+    if not any(parameter.kind is Parameter.VAR_KEYWORD for parameter in parameters):
+        accepted = {
+            parameter.name
+            for parameter in parameters
+            if parameter.kind in {Parameter.POSITIONAL_OR_KEYWORD, Parameter.KEYWORD_ONLY}
+        }
+        unexpected = sorted(set(args) - accepted)
+        if unexpected:
+            return f"invalid arguments for tool {tool_name}: unexpected {', '.join(unexpected)}"
+    return None

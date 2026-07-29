@@ -47,3 +47,30 @@ Verification:
 
 Concerns:
 - Online mode constructs the configured OpenAI-compatible provider; real network behavior still depends on valid user-supplied LLM credentials.
+
+---
+
+Status: DONE
+
+Remaining final re-review blocker fixes:
+- Hardened destructive target validation to reject root-equivalent, traversal, dot-segment, duplicate-slash, relative, whitespace-altered, and wildcard NAS paths before approval.
+- Added safe `StepRunner` argument validation and generic handler exception capture so invalid online/file-tool plans return failed `StepResult`s instead of raising or leaking handler error details.
+- Updated the planner prompt to request `tool_args` keyed by tool name for tools that require inputs.
+
+Files changed:
+- `src/nasagent/agent/execution/step_runner.py`
+- `src/nasagent/agent/planning/prompts.py`
+- `src/nasagent/safety/policy.py`
+- `tests/unit/agent/test_step_runner.py`
+- `tests/unit/safety/test_policy.py`
+- `.superpowers/sdd/final-fix-report.md`
+
+Verification:
+- `uv run pytest`: PASSED, 48 passed.
+- `uv run ruff check .`: PASSED.
+- `uv run ruff format --check .`: PASSED, 102 files already formatted.
+- `uv run mypy src`: PASSED, no issues found in 74 source files.
+- `uv run nasagent run "check storage" --profile simulator`: PASSED.
+
+Concerns:
+- Handler exception details are intentionally suppressed to avoid leaking secrets; debugging failed tools will require local logs or targeted instrumentation.

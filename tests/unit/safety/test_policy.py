@@ -48,6 +48,41 @@ def test_destructive_tool_without_target_args_is_blocked_without_confirmation() 
     assert decision.reason == "unsafe destructive target"
 
 
+def test_destructive_tool_blocks_ambiguous_targets_even_when_enabled() -> None:
+    tool = ToolDefinition(
+        name="delete_file",
+        description="delete",
+        risk_level=RiskLevel.DESTRUCTIVE,
+        handler=noop,
+    )
+    policy = SafetyPolicy(SafetySettings(allow_destructive=True))
+
+    for path in ("/", "//", "/..", "/downloads/..", "/./", "*", "/downloads/*"):
+        decision = policy.evaluate(tool, {"path": path})
+
+        assert decision.allowed is False
+        assert decision.requires_confirmation is False
+        assert decision.approval_allowed is False
+        assert decision.reason == "unsafe destructive target"
+
+
+def test_destructive_tool_allows_concrete_target_for_approval() -> None:
+    tool = ToolDefinition(
+        name="delete_file",
+        description="delete",
+        risk_level=RiskLevel.DESTRUCTIVE,
+        handler=noop,
+    )
+
+    decision = SafetyPolicy(SafetySettings(allow_destructive=True)).evaluate(
+        tool, {"path": "/downloads/movie.iso"}
+    )
+
+    assert decision.allowed is False
+    assert decision.requires_confirmation is True
+    assert decision.approval_allowed is True
+
+
 def test_confirmation_required_write_is_not_allowed_without_approval() -> None:
     tool = ToolDefinition(
         name="upload_file",
