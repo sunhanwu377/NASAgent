@@ -1,18 +1,85 @@
 # NASAgent
 
-NASAgent is a Python CLI AI agent for operating NAS devices safely.
+> AI-assisted NAS automation from the command line, built for safe operations, extensible plugins, and local-first control.
 
-Phase 1 provides an extensible package-first framework with OpenAI planning, ReAct-style step execution, simulator-backed NAS tools, UGREEN adapter boundaries, Rich CLI output, safety policy, local configuration and credential models, tests, documentation, and GitHub/Gitea CI definitions.
+## Why NASAgent
+
+NASAgent helps homelab and NAS users inspect storage, operate files, manage apps, and automate deployment workflows through a safety-aware CLI agent.
+
+## Features
+
+- Safety-aware ReAct-style execution.
+- Simulator-backed development mode.
+- Extensible tool and command registries.
+- Python plugin entry points.
+- LAN discovery foundation with vendor probe support.
+- Local secrets file with redacted output.
+- Docker and NAS app integration foundations.
+
+## Status
+
+NASAgent is early-stage. Simulator tools are usable today. Docker, AList, Lucky, Vaultwarden, Cloudflare, and sun-panel support are being added incrementally and are not all production-ready.
 
 ## Quick Start
 
 ```bash
 uv sync --all-extras --dev
 uv run nasagent tools list
-uv run nasagent apps list
-uv run nasagent plugins list
 uv run nasagent run "check storage" --profile simulator
 ```
+
+## CLI Examples
+
+```bash
+uv run nasagent config init
+uv run nasagent tools list
+uv run nasagent apps list
+uv run nasagent plugins list
+uv run nasagent containers list
+```
+
+## Chat Examples
+
+```bash
+uv run nasagent chat
+/help
+/apps
+/plugins
+/containers
+```
+
+## Integrations
+
+| Integration | Status | Notes |
+| --- | --- | --- |
+| Simulator NAS | Available | Safe local development and tests |
+| UGREEN NAS | Boundary | Awaiting verified API details |
+| Docker | Foundation | SDK tools and guarded Compose operations |
+| AList | Minimal | Auth and filesystem tool foundation |
+| Lucky | Planned | API must be verified before write tools |
+| Vaultwarden | Minimal | Targets Vaultwarden, not official Bitwarden cloud APIs |
+| Cloudflare | Plugin target | Intended as third-party plugin example |
+| sun-panel | Planned | Future app publishing flow |
+
+## Safety
+
+Tools are classified as `read`, `write`, `destructive`, or `system`. Higher-risk operations require confirmation and continue through NASAgent's safety policy.
+
+## Configuration And Secrets
+
+Non-sensitive config lives in `~/.config/nasagent/config.toml`. Tokens and API keys live in `~/.local/share/nasagent/secrets.toml` with `0600` permissions and are redacted by default.
+
+## Documentation
+
+- `docs/architecture.md`
+- `docs/agent-flow.md`
+- `docs/tools.md`
+- `docs/cli.md`
+- `docs/configuration.md`
+- `docs/discovery.md`
+- `docs/plugins.md`
+- `docs/development.md`
+- `docs/packaging.md`
 
 ## Development
 
@@ -22,30 +89,3 @@ uv run ruff check .
 uv run ruff format --check .
 uv run mypy src
 ```
-
-## Platform Foundation
-
-NASAgent includes an internal platform context that wires together registries for tools, slash-style commands, and NAS app endpoints. The plugin manager loads the built-in NAS plugin into the existing tool registry path, registers shared slash commands, and can record entry-point plugin load failures without stopping the platform.
-
-Configuration is loaded into `NasAgentSettings`, which includes LLM, safety, observability, app endpoint, and plugin setting models. Long-lived app credentials belong in the local credential store at `~/.local/share/nasagent/secrets.toml`, while `config.toml` stores references such as `credential_key`.
-
-`nasagent config init` writes non-sensitive settings to `~/.config/nasagent/config.toml`. If an LLM API key is entered, it is stored as `llm.api_key` in `~/.local/share/nasagent/secrets.toml`; the secrets file is created with mode `0600` and the key is not written into config TOML. `nasagent config show` keeps existing redaction behavior for sensitive values loaded into settings.
-
-The discovery scanner has a conservative foundation for NAS service detection. mDNS and SSDP discovery functions are safe no-op placeholders today, and `DiscoveryScanner.scan_hosts([...])` probes only the explicit hosts passed to it using the registered vendor and generic probe targets. It does not perform broad LAN or subnet scanning in this task.
-
-The CLI exposes shared platform commands through `nasagent apps list`, `nasagent plugins list`, and `nasagent containers list`. The chat REPL also dispatches slash commands such as `/help`, `/apps`, `/plugins`, `/tools`, and `/containers` before falling back to conversational or simulator task handling.
-
-The built-in plugin registers Docker, AList, and Vaultwarden tool definitions through the same tool registry and safety policy path as NAS tools. Docker container, image, network, volume, and Compose tools are present for planning and confirmation handling; Compose command helpers build explicit `docker compose` subprocess argument lists without invoking a shell. AList and Vaultwarden tools are minimal namespaced placeholders until configured endpoint-backed handlers are wired in. Lucky currently has an endpoint/token client skeleton but no built-in tools.
-
-Later tasks are expected to connect this foundation to app endpoint discovery, credential-backed app clients, and higher-level integrations.
-
-## Documentation
-
-- `docs/architecture.md`
-- `docs/agent-flow.md`
-- `docs/adapters.md`
-- `docs/tools.md`
-- `docs/cli.md`
-- `docs/configuration.md`
-- `docs/development.md`
-- `docs/packaging.md`
