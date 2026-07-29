@@ -1,10 +1,46 @@
 # Configuration
 
-Default configuration belongs under `~/.config/nasagent/`. Runtime logs belong under `~/.nasagent/runs/`.
+Default configuration belongs at `~/.config/nasagent/config.toml`. Runtime logs belong under `~/.nasagent/runs/` by default.
 
-Secrets must not be committed. Phase 1 can use environment variables and local TOML files. System keyring support can be added without changing adapter interfaces.
+Create the first config file with:
 
-Environment variables use the `NASAGENT_` prefix and `__` for nested fields, for example `NASAGENT_LLM__API_KEY` or `NASAGENT_OBSERVABILITY__RUN_LOG_DIR`.
+```bash
+uv run nasagent config init
+```
+
+The init command creates `~/.config/nasagent/config.toml` when it does not already exist and guides you through LLM configuration. Existing config files are not overwritten.
+
+Show the effective configuration with:
+
+```bash
+uv run nasagent config show
+```
+
+`config show` prints TOML and redacts `llm.api_key`.
+
+Example config:
+
+```toml
+[llm]
+provider = "openai"
+model = "gpt-4.1-mini"
+base_url = "https://api.openai.com/v1"
+api_key = "your-api-key"
+
+[safety]
+default_mode = "confirm_destructive"
+allow_auto_write = false
+allow_destructive = false
+require_confirmation_for = ["delete_file", "upload_file"]
+
+[observability]
+run_log_dir = "~/.nasagent/runs"
+redact_sensitive = true
+```
+
+Secrets must not be committed. Local TOML files are for user-specific configuration. System keyring support can be added without changing adapter interfaces.
+
+Environment variables use the `NASAGENT_` prefix and `__` for nested fields, for example `NASAGENT_LLM__API_KEY` or `NASAGENT_OBSERVABILITY__RUN_LOG_DIR`. Environment variables override values from `config.toml`.
 
 Profiles select the NAS adapter. The built-in `simulator` profile is the supported phase 1 CLI path; UGREEN profiles should wait for verified API details before real operations are added.
 
