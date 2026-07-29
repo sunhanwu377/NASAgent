@@ -512,7 +512,8 @@ Update `settings_to_toml_data()` to include `apps` and `plugins` when non-empty:
 ```python
 if settings.apps:
     data["apps"] = {
-        name: endpoint.model_dump(exclude_none=True) for name, endpoint in settings.apps.items()
+        name: endpoint.model_dump(exclude_none=True)
+        for name, endpoint in settings.apps.items()
     }
 if settings.plugins:
     data["plugins"] = settings.plugins
@@ -577,6 +578,7 @@ def test_plugin_manager_loads_builtin_plugin_tools() -> None:
 def test_plugin_manager_records_failed_entry_point() -> None:
     context = create_platform_context(settings=NasAgentSettings())
     manager = PluginManager(context)
+
 
     class BrokenEntryPoint:
         name = "broken"
@@ -825,9 +827,7 @@ def register_builtin_commands(context: PlatformContext) -> None:
     context.commands.register(CommandDefinition("apps", "List configured apps", "/apps", _apps))
     context.commands.register(CommandDefinition("plugins", "List plugins", "/plugins", _plugins))
     context.commands.register(CommandDefinition("tools", "List tools", "/tools", _tools))
-    context.commands.register(
-        CommandDefinition("containers", "List containers", "/containers", _containers)
-    )
+    context.commands.register(CommandDefinition("containers", "List containers", "/containers", _containers))
 
 
 def _help(args: tuple[str, ...]) -> CommandResult:
@@ -854,27 +854,11 @@ After this minimal implementation passes basic tests, refine `_apps` in the same
 
 ```python
 def register_builtin_commands(context: PlatformContext) -> None:
-    context.commands.register(
-        CommandDefinition("help", "Show help", "/help", lambda args: _help(context, args))
-    )
-    context.commands.register(
-        CommandDefinition(
-            "apps", "List configured apps", "/apps", lambda args: _apps(context, args)
-        )
-    )
-    context.commands.register(
-        CommandDefinition(
-            "plugins", "List plugins", "/plugins", lambda args: _plugins(context, args)
-        )
-    )
-    context.commands.register(
-        CommandDefinition("tools", "List tools", "/tools", lambda args: _tools(context, args))
-    )
-    context.commands.register(
-        CommandDefinition(
-            "containers", "List containers", "/containers", lambda args: _containers(context, args)
-        )
-    )
+    context.commands.register(CommandDefinition("help", "Show help", "/help", lambda args: _help(context, args)))
+    context.commands.register(CommandDefinition("apps", "List configured apps", "/apps", lambda args: _apps(context, args)))
+    context.commands.register(CommandDefinition("plugins", "List plugins", "/plugins", lambda args: _plugins(context, args)))
+    context.commands.register(CommandDefinition("tools", "List tools", "/tools", lambda args: _tools(context, args)))
+    context.commands.register(CommandDefinition("containers", "List containers", "/containers", lambda args: _containers(context, args)))
 ```
 
 - [ ] **Step 5: Register commands from built-in plugin**
@@ -1091,9 +1075,11 @@ from nasagent.discovery.models import ProbeHttpResponse, ProbeTarget, VendorProb
 class VendorProbe(Protocol):
     vendor: str
 
-    def targets(self, host: str) -> list[ProbeTarget]: ...
+    def targets(self, host: str) -> list[ProbeTarget]:
+        ...
 
-    async def match(self, response: ProbeHttpResponse) -> VendorProbeResult | None: ...
+    async def match(self, response: ProbeHttpResponse) -> VendorProbeResult | None:
+        ...
 
 
 class VendorProbeRegistry:
@@ -1166,18 +1152,13 @@ class SynologyProbe:
     vendor = "synology"
 
     def targets(self, host: str) -> list[ProbeTarget]:
-        return [
-            ProbeTarget(host=host, ports=(5000,), schemes=("http",)),
-            ProbeTarget(host=host, ports=(5001,), schemes=("https",)),
-        ]
+        return [ProbeTarget(host=host, ports=(5000,), schemes=("http",)), ProbeTarget(host=host, ports=(5001,), schemes=("https",))]
 
     async def match(self, response: ProbeHttpResponse) -> VendorProbeResult | None:
         haystack = f"{response.headers} {response.text}".lower()
         if "synology" not in haystack and "diskstation" not in haystack:
             return None
-        return VendorProbeResult(
-            self.vendor, "nas_admin", response.url, response.url, 0.9, {"matched": "synology"}
-        )
+        return VendorProbeResult(self.vendor, "nas_admin", response.url, response.url, 0.9, {"matched": "synology"})
 ```
 
 - [ ] **Step 7: Run task tests**
@@ -1226,28 +1207,8 @@ async def test_scanner_deduplicates_services() -> None:
     scanner = DiscoveryScanner(options=DiscoveryOptions(timeout_seconds=0.1, concurrency=1))
     services = scanner.deduplicate(
         [
-            DiscoveredService(
-                "192.168.1.2",
-                9443,
-                "https",
-                "nas_admin",
-                "UGREEN",
-                "vendor",
-                0.9,
-                "https://192.168.1.2:9443/",
-                "https://192.168.1.2:9443/",
-            ),
-            DiscoveredService(
-                "192.168.1.2",
-                9443,
-                "https",
-                "nas_admin",
-                "UGREEN",
-                "vendor",
-                0.8,
-                "https://192.168.1.2:9443/",
-                "https://192.168.1.2:9443/",
-            ),
+            DiscoveredService("192.168.1.2", 9443, "https", "nas_admin", "UGREEN", "vendor", 0.9, "https://192.168.1.2:9443/", "https://192.168.1.2:9443/"),
+            DiscoveredService("192.168.1.2", 9443, "https", "nas_admin", "UGREEN", "vendor", 0.8, "https://192.168.1.2:9443/", "https://192.168.1.2:9443/"),
         ]
     )
 
@@ -1257,9 +1218,7 @@ async def test_scanner_deduplicates_services() -> None:
 
 async def test_scanner_converts_vendor_match_to_discovered_service() -> None:
     scanner = DiscoveryScanner(options=DiscoveryOptions(timeout_seconds=0.1, concurrency=1))
-    response = ProbeHttpResponse(
-        "https://192.168.1.2:9443/", 200, {"server": "ugreen"}, "UGREEN NAS login"
-    )
+    response = ProbeHttpResponse("https://192.168.1.2:9443/", 200, {"server": "ugreen"}, "UGREEN NAS login")
 
     service = await scanner.match_vendor_response("192.168.1.2", 9443, "https", response)
 
@@ -1294,15 +1253,11 @@ class DiscoveryOptions:
 
 
 class DiscoveryScanner:
-    def __init__(
-        self, *, options: DiscoveryOptions | None = None, vendors: VendorProbeRegistry | None = None
-    ) -> None:
+    def __init__(self, *, options: DiscoveryOptions | None = None, vendors: VendorProbeRegistry | None = None) -> None:
         self.options = options or DiscoveryOptions()
         self.vendors = vendors or VendorProbeRegistry.default()
 
-    async def match_vendor_response(
-        self, host: str, port: int, scheme: str, response: ProbeHttpResponse
-    ) -> DiscoveredService | None:
+    async def match_vendor_response(self, host: str, port: int, scheme: str, response: ProbeHttpResponse) -> DiscoveredService | None:
         for probe in self.vendors.list():
             result = await probe.match(response)
             if result is None:
@@ -1356,9 +1311,7 @@ Use this prompt behavior:
 ```python
 scan_lan = typer.confirm("Scan local network for NAS services?", default=False)
 if scan_lan:
-    typer.echo(
-        "LAN discovery is enabled. Protocol scanners and vendor probes will run with safe limits."
-    )
+    typer.echo("LAN discovery is enabled. Protocol scanners and vendor probes will run with safe limits.")
 ```
 
 - [ ] **Step 6: Add CLI init smoke test with no scan**
@@ -1478,9 +1431,7 @@ def run_compose(action: ComposeAction, *, compose_file: str) -> str:
         text=True,
     )
     if result.returncode != 0:
-        raise RuntimeError(
-            f"docker compose {action} failed with exit code {result.returncode}: {result.stderr.strip()}"
-        )
+        raise RuntimeError(f"docker compose {action} failed with exit code {result.returncode}: {result.stderr.strip()}")
     return result.stdout
 ```
 
@@ -1500,63 +1451,16 @@ async def _not_configured(*args, **kwargs) -> dict[str, str]:
 
 def docker_tool_definitions() -> Sequence[ToolDefinition]:
     return (
-        ToolDefinition(
-            "docker.containers.list", "List Docker containers", RiskLevel.READ, _not_configured
-        ),
-        ToolDefinition(
-            "docker.containers.inspect",
-            "Inspect a Docker container",
-            RiskLevel.READ,
-            _not_configured,
-        ),
-        ToolDefinition(
-            "docker.containers.start",
-            "Start a Docker container",
-            RiskLevel.WRITE,
-            _not_configured,
-            requires_confirmation=True,
-        ),
-        ToolDefinition(
-            "docker.containers.stop",
-            "Stop a Docker container",
-            RiskLevel.WRITE,
-            _not_configured,
-            requires_confirmation=True,
-        ),
-        ToolDefinition(
-            "docker.images.pull",
-            "Pull a Docker image",
-            RiskLevel.WRITE,
-            _not_configured,
-            requires_confirmation=True,
-        ),
-        ToolDefinition(
-            "docker.networks.list", "List Docker networks", RiskLevel.READ, _not_configured
-        ),
-        ToolDefinition(
-            "docker.volumes.list", "List Docker volumes", RiskLevel.READ, _not_configured
-        ),
-        ToolDefinition(
-            "docker.compose.config",
-            "Validate Docker Compose config",
-            RiskLevel.SYSTEM,
-            _not_configured,
-            requires_confirmation=True,
-        ),
-        ToolDefinition(
-            "docker.compose.up",
-            "Run Docker Compose up",
-            RiskLevel.SYSTEM,
-            _not_configured,
-            requires_confirmation=True,
-        ),
-        ToolDefinition(
-            "docker.compose.down",
-            "Run Docker Compose down",
-            RiskLevel.SYSTEM,
-            _not_configured,
-            requires_confirmation=True,
-        ),
+        ToolDefinition("docker.containers.list", "List Docker containers", RiskLevel.READ, _not_configured),
+        ToolDefinition("docker.containers.inspect", "Inspect a Docker container", RiskLevel.READ, _not_configured),
+        ToolDefinition("docker.containers.start", "Start a Docker container", RiskLevel.WRITE, _not_configured, requires_confirmation=True),
+        ToolDefinition("docker.containers.stop", "Stop a Docker container", RiskLevel.WRITE, _not_configured, requires_confirmation=True),
+        ToolDefinition("docker.images.pull", "Pull a Docker image", RiskLevel.WRITE, _not_configured, requires_confirmation=True),
+        ToolDefinition("docker.networks.list", "List Docker networks", RiskLevel.READ, _not_configured),
+        ToolDefinition("docker.volumes.list", "List Docker volumes", RiskLevel.READ, _not_configured),
+        ToolDefinition("docker.compose.config", "Validate Docker Compose config", RiskLevel.SYSTEM, _not_configured, requires_confirmation=True),
+        ToolDefinition("docker.compose.up", "Run Docker Compose up", RiskLevel.SYSTEM, _not_configured, requires_confirmation=True),
+        ToolDefinition("docker.compose.down", "Run Docker Compose down", RiskLevel.SYSTEM, _not_configured, requires_confirmation=True),
     )
 ```
 
@@ -1658,14 +1562,7 @@ from nasagent.integrations.vaultwarden.tools import vaultwarden_tool_definitions
 
 def test_alist_tool_definitions_are_namespaced() -> None:
     names = {tool.name for tool in alist_tool_definitions()}
-    assert {
-        "alist.auth.login",
-        "alist.fs.list",
-        "alist.fs.get",
-        "alist.fs.mkdir",
-        "alist.fs.upload",
-        "alist.fs.remove",
-    }.issubset(names)
+    assert {"alist.auth.login", "alist.fs.list", "alist.fs.get", "alist.fs.mkdir", "alist.fs.upload", "alist.fs.remove"}.issubset(names)
 
 
 def test_vaultwarden_tool_definitions_are_namespaced() -> None:
@@ -1693,9 +1590,7 @@ class AListClient:
 
     async def login(self, username: str, password: str) -> str:
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.base_url}/api/auth/login", json={"username": username, "password": password}
-            )
+            response = await client.post(f"{self.base_url}/api/auth/login", json={"username": username, "password": password})
         response.raise_for_status()
         data = response.json()
         return str(data["data"]["token"])
@@ -1703,9 +1598,7 @@ class AListClient:
     async def list_files(self, path: str) -> list[dict[str, object]]:
         headers = {"Authorization": self.token} if self.token else {}
         async with httpx.AsyncClient() as client:
-            response = await client.post(
-                f"{self.base_url}/api/fs/list", json={"path": path}, headers=headers
-            )
+            response = await client.post(f"{self.base_url}/api/fs/list", json={"path": path}, headers=headers)
         response.raise_for_status()
         data = response.json()
         return list(data.get("data", {}).get("content", []))
@@ -1730,27 +1623,9 @@ def alist_tool_definitions() -> Sequence[ToolDefinition]:
         ToolDefinition("alist.auth.login", "Log in to AList", RiskLevel.WRITE, _not_configured),
         ToolDefinition("alist.fs.list", "List AList files", RiskLevel.READ, _not_configured),
         ToolDefinition("alist.fs.get", "Get AList file metadata", RiskLevel.READ, _not_configured),
-        ToolDefinition(
-            "alist.fs.mkdir",
-            "Create AList directory",
-            RiskLevel.WRITE,
-            _not_configured,
-            requires_confirmation=True,
-        ),
-        ToolDefinition(
-            "alist.fs.upload",
-            "Upload file through AList",
-            RiskLevel.WRITE,
-            _not_configured,
-            requires_confirmation=True,
-        ),
-        ToolDefinition(
-            "alist.fs.remove",
-            "Remove AList file",
-            RiskLevel.DESTRUCTIVE,
-            _not_configured,
-            requires_confirmation=True,
-        ),
+        ToolDefinition("alist.fs.mkdir", "Create AList directory", RiskLevel.WRITE, _not_configured, requires_confirmation=True),
+        ToolDefinition("alist.fs.upload", "Upload file through AList", RiskLevel.WRITE, _not_configured, requires_confirmation=True),
+        ToolDefinition("alist.fs.remove", "Remove AList file", RiskLevel.DESTRUCTIVE, _not_configured, requires_confirmation=True),
     )
 ```
 
@@ -1769,11 +1644,7 @@ async def _not_configured(*args, **kwargs) -> dict[str, str]:
 
 
 def vaultwarden_tool_definitions() -> Sequence[ToolDefinition]:
-    return (
-        ToolDefinition(
-            "vaultwarden.users.list", "List Vaultwarden users", RiskLevel.READ, _not_configured
-        ),
-    )
+    return (ToolDefinition("vaultwarden.users.list", "List Vaultwarden users", RiskLevel.READ, _not_configured),)
 ```
 
 - [ ] **Step 6: Implement Lucky and Vaultwarden client skeletons**

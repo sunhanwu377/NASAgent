@@ -54,7 +54,7 @@ uv run nasagent chat
 | --- | --- | --- |
 | Simulator NAS | Available | Safe local development and tests |
 | UGREEN NAS | Boundary | Awaiting verified API details |
-| Docker | Foundation | SDK tools and guarded Compose operations |
+| Docker | Foundation | Docker tool-definition foundation and guarded Compose argv helpers |
 | AList | Minimal | Auth and filesystem tool foundation |
 | Lucky | Planned | API must be verified before write tools |
 | Vaultwarden | Minimal | Targets Vaultwarden, not official Bitwarden cloud APIs |
