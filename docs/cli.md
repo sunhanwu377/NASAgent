@@ -23,4 +23,4 @@ The chat REPL dispatches slash commands before local chat or task execution. Sup
 
 Both `chat` and `run` execute through planning, safety policy, simulator-backed tools, synthesis, and sanitized run-state persistence under the configured run-log directory.
 
-`nasagent apps list`, `nasagent plugins list`, and `nasagent containers list` are CLI wrappers around the same shared command registry used by chat slash commands. They create a platform context, load the built-in plugin, dispatch the matching slash command, and print the returned message.
+`nasagent apps list`, `nasagent plugins list`, `nasagent tools list`, and `nasagent containers list` use the same platform registries as chat slash commands. They create a platform context, load built-in and `nasagent.plugins` entry-point plugins, dispatch or render from the shared registry, and print the returned message. `/plugins` and `nasagent plugins list` include loaded plugin manifests and entry-point load errors.

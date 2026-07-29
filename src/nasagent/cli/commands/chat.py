@@ -10,7 +10,7 @@ from nasagent.config.settings import default_config_path, load_settings
 from nasagent.llm.messages import ChatMessage
 from nasagent.llm.openai_provider import OpenAiProvider
 from nasagent.platform.context import create_platform_context
-from nasagent.platform.plugins import PluginManager
+from nasagent.platform.plugins import load_platform_plugins
 
 GREETING_INPUTS = {"hello", "hi", "hey", "你好", "您好", "嗨"}
 ENGLISH_TASK_ACTION_KEYWORDS = {
@@ -107,7 +107,7 @@ def chat(
             continue
         if task.startswith("/"):
             context = create_platform_context(settings=load_settings())
-            PluginManager(context).load_builtin()
+            load_platform_plugins(context)
             result = context.commands.dispatch(task)
             renderer.agent_message(result.message)
             continue

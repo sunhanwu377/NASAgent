@@ -5,6 +5,8 @@ from typing import Any, cast
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, EnvSettingsSource, SettingsConfigDict
 
+from nasagent.config.secrets import CredentialStore
+
 DEFAULT_CONFIG_PATH = Path("~/.config/nasagent/config.toml")
 
 
@@ -64,10 +66,22 @@ def load_config_file(path: Path | None = None) -> dict[str, object]:
         return tomllib.load(config_file)
 
 
-def load_settings(path: Path | None = None) -> NasAgentSettings:
+def load_settings(
+    path: Path | None = None,
+    *,
+    credential_store: CredentialStore | None = None,
+) -> NasAgentSettings:
     data = load_config_file(path)
     _merge_dict(data, EnvSettingsSource(NasAgentSettings)())
-    return NasAgentSettings.model_validate(data)
+    settings = NasAgentSettings.model_validate(data)
+    if settings.llm.api_key:
+        return settings
+    stored_api_key = (credential_store or CredentialStore()).get("llm.api_key")
+    if stored_api_key is None:
+        return settings
+    return settings.model_copy(
+        update={"llm": settings.llm.model_copy(update={"api_key": stored_api_key})}
+    )
 
 
 def settings_to_toml_data(settings: NasAgentSettings, *, redact: bool = False) -> dict[str, object]:

@@ -1,3 +1,5 @@
+import re
+
 from nasagent.discovery.models import ProbeHttpResponse, ProbeTarget, VendorProbeResult
 
 
@@ -12,7 +14,7 @@ class GenericNasProbe:
 
     async def match(self, response: ProbeHttpResponse) -> VendorProbeResult | None:
         haystack = f"{response.headers} {response.text}".lower()
-        if "nas" not in haystack and "network attached storage" not in haystack:
+        if not re.search(r"\bnas\b", haystack) and "network attached storage" not in haystack:
             return None
         return VendorProbeResult(
             self.vendor,

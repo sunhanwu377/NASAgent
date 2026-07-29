@@ -2,14 +2,14 @@ import typer
 
 from nasagent.config.settings import load_settings
 from nasagent.platform.context import PlatformContext, create_platform_context
-from nasagent.platform.plugins import PluginManager
+from nasagent.platform.plugins import load_platform_plugins
 
 app = typer.Typer(help="Manage plugins")
 
 
 def _context() -> PlatformContext:
     context = create_platform_context(settings=load_settings())
-    PluginManager(context).load_builtin()
+    load_platform_plugins(context)
     return context
 
 

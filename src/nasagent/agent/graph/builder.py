@@ -32,13 +32,16 @@ def build_agent_graph(
     safety_settings: SafetySettings | None = None,
     approval_provider: ApprovalProvider | None = None,
 ) -> Any:
+    tool_registry = default_tool_registry()
+
     async def plan_node(state: GraphState) -> GraphState:
-        planner = Planner(provider=provider)
+        tool_names = tuple(tool.name for tool in tool_registry.list())
+        planner = Planner(provider=provider, tool_names=tool_names)
         return {"plan": await planner.create_plan(state["goal"])}
 
     async def execute_node(state: GraphState) -> GraphState:
         runner = StepRunner(
-            registry=default_tool_registry(),
+            registry=tool_registry,
             safety_policy=SafetyPolicy(safety_settings or SafetySettings()),
             approval_provider=approval_provider,
         )

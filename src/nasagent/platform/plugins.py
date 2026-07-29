@@ -1,7 +1,7 @@
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from importlib.metadata import entry_points
-from typing import Protocol
+from typing import Protocol, cast
 
 from nasagent.platform.context import PlatformContext
 
@@ -38,8 +38,8 @@ class PluginContext:
 class PluginManager:
     def __init__(self, context: PlatformContext) -> None:
         self.context = context
-        self.manifests: dict[str, PluginManifest] = {}
-        self.errors: list[PluginLoadError] = []
+        self.manifests = cast(dict[str, PluginManifest], context.plugin_manifests)
+        self.errors = cast(list[PluginLoadError], context.plugin_errors)
 
     def register_manifest(self, manifest: PluginManifest) -> None:
         self.manifests[manifest.name] = manifest
@@ -66,6 +66,17 @@ class PluginManager:
                     self.register_manifest(plugin_context.manifest)
             except Exception as exc:
                 self.errors.append(PluginLoadError(plugin=name, message=str(exc)))
+
+
+def load_platform_plugins(
+    context: PlatformContext,
+    *,
+    entry_points: Iterable[PluginEntryPoint] | None = None,
+) -> PluginManager:
+    manager = PluginManager(context)
+    manager.load_builtin()
+    manager.load_entry_points(entry_points=entry_points)
+    return manager
 
 
 def entry_points_select() -> Iterable[PluginEntryPoint]:

@@ -17,7 +17,41 @@ from nasagent.config import settings as settings_module
 from nasagent.config.secrets import CredentialStore
 from nasagent.config.settings import LlmSettings, NasAgentSettings
 from nasagent.llm.base import LlmProvider
+from nasagent.platform import plugins as platform_plugins
+from nasagent.platform.plugins import PluginManifest
+from nasagent.safety.risk import RiskLevel
+from nasagent.tools.base import ToolDefinition
 from nasagent.tools.schemas import ToolCallResult
+
+
+async def _fake_plugin_tool() -> dict[str, str]:
+    return {"status": "ok"}
+
+
+def _fake_entry_points():  # type: ignore[no-untyped-def]
+    def register(plugin_context):  # type: ignore[no-untyped-def]
+        plugin_context.manifest = PluginManifest(name="third-party", version="1.2.3")
+        plugin_context.platform.tools.register(
+            ToolDefinition("example.ping", "Ping example plugin", RiskLevel.READ, _fake_plugin_tool)
+        )
+
+    class FakeEntryPoint:
+        name = "third-party"
+
+        def load(self):  # type: ignore[no-untyped-def]
+            return register
+
+    return [FakeEntryPoint()]
+
+
+def _broken_entry_points():  # type: ignore[no-untyped-def]
+    class BrokenEntryPoint:
+        name = "broken"
+
+        def load(self):  # type: ignore[no-untyped-def]
+            raise RuntimeError("boom")
+
+    return [BrokenEntryPoint()]
 
 
 @pytest.fixture
@@ -52,6 +86,28 @@ def test_tools_list_command() -> None:
     assert "get_storage_status" in result.output
 
 
+def test_tools_list_command_includes_platform_plugin_tools() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["tools", "list"])
+
+    assert result.exit_code == 0
+    assert "docker.containers.list" in result.output
+    assert "alist.fs.list" in result.output
+    assert "vaultwarden.users.list" in result.output
+
+
+def test_chat_tools_slash_uses_platform_registry() -> None:
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["chat", "--profile", "simulator"], input="/tools\nexit\n")
+
+    assert result.exit_code == 0
+    assert "Agent-callable tools:" in result.output
+    assert "docker.containers.list" in result.output
+    assert "alist.fs.list" in result.output
+
+
 def test_apps_list_command_smoke(cli_runner) -> None:  # type: ignore[no-untyped-def]
     result = cli_runner.invoke(app, ["apps", "list"])
 
@@ -84,6 +140,26 @@ def test_plugins_list_command_smoke(cli_runner) -> None:  # type: ignore[no-unty
 
     assert result.exit_code == 0
     assert "builtin" in result.output
+
+
+def test_plugins_list_command_loads_entry_points(cli_runner, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setattr(platform_plugins, "entry_points_select", _fake_entry_points)
+
+    result = cli_runner.invoke(app, ["plugins", "list"])
+
+    assert result.exit_code == 0
+    assert "third-party" in result.output
+    assert "1.2.3" in result.output
+
+
+def test_chat_plugins_slash_reports_entry_point_errors(cli_runner, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    monkeypatch.setattr(platform_plugins, "entry_points_select", _broken_entry_points)
+
+    result = cli_runner.invoke(app, ["chat", "--profile", "simulator"], input="/plugins\nexit\n")
+
+    assert result.exit_code == 0
+    assert "broken" in result.output
+    assert "boom" in result.output
 
 
 def test_rich_banner_panel_includes_profile_provider_and_streaming_state() -> None:
@@ -519,6 +595,30 @@ def test_execute_simulator_task_uses_injected_online_provider_factory(tmp_path) 
     assert captured_settings == [settings.llm]
 
 
+def test_execute_simulator_task_uses_credential_store_api_key_for_provider_selection(
+    tmp_path: Path,
+) -> None:
+    config_path = tmp_path / "config.toml"
+    config_path.write_text('[llm]\nbase_url = "https://openai-compatible.example/v1"\n')
+    store = CredentialStore(tmp_path / "secrets.toml")
+    store.set("llm.api_key", "stored-api-key")
+    settings = settings_module.load_settings(config_path, credential_store=store)
+    captured_settings: list[LlmSettings] = []
+
+    def provider_factory(llm_settings: LlmSettings) -> LlmProvider:
+        captured_settings.append(llm_settings)
+        return FakeOnlineProvider()
+
+    state = run_command.execute_simulator_task(
+        "check storage",
+        settings=settings,
+        provider_factory=provider_factory,
+    )
+
+    assert state.step_results[0].tool_results[0].tool_name == "get_storage_status"
+    assert captured_settings[0].api_key == "stored-api-key"
+
+
 def test_execute_simulator_task_offline_stays_deterministic(tmp_path) -> None:  # type: ignore[no-untyped-def]
     settings = NasAgentSettings(observability={"run_log_dir": str(tmp_path)})
 
@@ -539,6 +639,27 @@ def test_config_show_redacts_api_key(tmp_path: Path, monkeypatch) -> None:  # ty
     assert result.exit_code == 0
     assert "secret-api-key" not in result.output
     assert 'api_key = "********"' in result.output
+
+
+def test_config_show_redacts_credential_store_api_key(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    config_path = tmp_path / "config.toml"
+    secrets_path = tmp_path / "secrets.toml"
+    config_path.write_text('[llm]\nmodel = "file-model"\n', encoding="utf-8")
+    CredentialStore(secrets_path).set("llm.api_key", "stored-api-key")
+    monkeypatch.setattr(settings_module, "DEFAULT_CONFIG_PATH", config_path)
+    monkeypatch.setattr(
+        settings_module,
+        "CredentialStore",
+        lambda: CredentialStore(secrets_path),
+    )
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["config", "show"])
+
+    assert result.exit_code == 0
+    assert "stored-api-key" not in result.output
+    assert 'api_key = "********"' in result.output
+    assert "stored-api-key" not in config_path.read_text(encoding="utf-8")
 
 
 def test_config_init_creates_toml_file(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]

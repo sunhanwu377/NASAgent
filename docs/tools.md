@@ -4,9 +4,9 @@ Tools are registered through `ToolRegistry`. Each tool has a name, description, 
 
 Tool names use `<namespace>.<resource>.<action>` where possible, for example `docker.containers.list`, `alist.fs.list`, and `vaultwarden.users.list`.
 
-The agent graph still builds its default registry with `default_tool_registry()`, which delegates built-in NAS tool registration to `register_builtin_nas_tools()`. This preserves the existing tool names used by planner output, such as `get_storage_status` and `upload_file`.
+The agent graph builds its default registry through `default_tool_registry()`, which creates a platform context and loads built-in plus entry-point plugins. This preserves the existing tool names used by planner output, such as `get_storage_status` and `upload_file`, while also exposing namespaced plugin tools such as `docker.containers.list`.
 
-The platform plugin path uses the same registration helper from the built-in plugin. Loading `PluginManager.load_builtin()` registers the same built-in NAS tools into `PlatformContext.tools`, adds dotted aliases for `device.status` and `storage.status`, registers Docker container/image/network/volume and Compose tool definitions, registers minimal AList and Vaultwarden tool definitions, and records the `builtin` plugin manifest. This path is available for platform code that creates a `PlatformContext`; it is not automatically invoked by agent graph startup yet.
+The platform plugin path uses the same registration helper from the built-in plugin. Loading platform plugins registers the same built-in NAS tools into `PlatformContext.tools`, adds dotted aliases for `device.status` and `storage.status`, registers Docker container/image/network/volume and Compose tool definitions, registers minimal AList and Vaultwarden tool definitions, records the `builtin` plugin manifest, and then loads third-party entry points from the `nasagent.plugins` group.
 
 Phase 1 tools include storage status, device status, list files, search files, upload file, download file, delete file, Docker tool definitions, AList tool definitions, and a Vaultwarden users-list definition for planning and safety handling. Docker, AList, and Vaultwarden handlers are placeholders until endpoint-backed integration is wired in.
 

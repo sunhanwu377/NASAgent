@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from nasagent.config.settings import NasAgentSettings
 from nasagent.platform.apps import AppEndpoint, AppRegistry
@@ -12,6 +12,8 @@ class PlatformContext:
     tools: ToolRegistry
     commands: CommandRegistry
     apps: AppRegistry
+    plugin_manifests: dict[str, object] = field(default_factory=dict)
+    plugin_errors: list[object] = field(default_factory=list)
 
 
 def create_platform_context(*, settings: NasAgentSettings) -> PlatformContext:

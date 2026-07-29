@@ -24,6 +24,10 @@ def register_builtin_nas_tools(registry: ToolRegistry) -> None:
 
 
 def default_tool_registry() -> ToolRegistry:
-    registry = ToolRegistry()
-    register_builtin_nas_tools(registry)
-    return registry
+    from nasagent.config.settings import NasAgentSettings
+    from nasagent.platform.context import create_platform_context
+    from nasagent.platform.plugins import load_platform_plugins
+
+    context = create_platform_context(settings=NasAgentSettings())
+    load_platform_plugins(context)
+    return context.tools

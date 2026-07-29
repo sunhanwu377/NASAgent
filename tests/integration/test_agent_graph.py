@@ -15,6 +15,14 @@ class FakeProvider(LlmProvider):
         )
 
 
+class DockerListProvider(LlmProvider):
+    async def complete(self, messages):  # type: ignore[no-untyped-def]
+        return (
+            '{"goal":"list containers","steps":[{"id":"s1","description":"List containers",'
+            '"risk":"read","expected_tools":["docker.containers.list"]}]}'
+        )
+
+
 class ApprovingProvider(ApprovalProvider):
     def confirm(self, message: str) -> bool:
         return True
@@ -31,6 +39,18 @@ async def test_agent_runs_plan_against_simulator() -> None:
     assert state.goal == "check storage"
     assert state.step_results[0].success is True
     assert "get_storage_status" in state.final_summary
+
+
+@pytest.mark.asyncio
+async def test_agent_execution_registry_includes_platform_plugin_tools() -> None:
+    state = await run_agent_once(
+        "list containers",
+        adapter=SimulatorNasAdapter(),
+        provider=DockerListProvider(),
+    )
+
+    assert state.step_results[0].success is True
+    assert state.step_results[0].tool_results[0].tool_name == "docker.containers.list"
 
 
 @pytest.mark.asyncio

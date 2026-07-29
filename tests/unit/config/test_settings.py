@@ -1,6 +1,7 @@
 import tomllib
 from pathlib import Path
 
+from nasagent.config.secrets import CredentialStore
 from nasagent.config.settings import (
     AppEndpointSettings,
     LlmSettings,
@@ -76,6 +77,28 @@ def test_environment_overrides_config_file_values(tmp_path: Path, monkeypatch) -
     settings = load_settings(config_path)
 
     assert settings.llm.model == "env-model"
+
+
+def test_load_settings_falls_back_to_credential_store_api_key(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.toml"
+    config_path.write_text('[llm]\nmodel = "file-model"\n', encoding="utf-8")
+    store = CredentialStore(tmp_path / "secrets.toml")
+    store.set("llm.api_key", "stored-api-key")
+
+    settings = load_settings(config_path, credential_store=store)
+
+    assert settings.llm.api_key == "stored-api-key"
+
+
+def test_load_settings_preserves_explicit_api_key_over_credential_store(tmp_path: Path) -> None:
+    config_path = tmp_path / "config.toml"
+    config_path.write_text('[llm]\napi_key = "file-key"\n', encoding="utf-8")
+    store = CredentialStore(tmp_path / "secrets.toml")
+    store.set("llm.api_key", "stored-api-key")
+
+    settings = load_settings(config_path, credential_store=store)
+
+    assert settings.llm.api_key == "file-key"
 
 
 def test_settings_to_toml_data_omits_unset_optional_values() -> None:

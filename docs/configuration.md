@@ -23,7 +23,7 @@ Show the effective configuration with:
 uv run nasagent config show
 ```
 
-`config show` prints TOML and redacts `llm.api_key` if it is present in loaded settings.
+`config show` prints TOML and redacts `llm.api_key` if it is present in loaded settings, including when it came from the credential store.
 
 Example config:
 
@@ -54,7 +54,7 @@ enabled = true
 
 Secrets must not be committed and should not be placed in `config.toml`. Store secret values in `~/.local/share/nasagent/secrets.toml`, which `CredentialStore` creates and reads only with `0600` permissions. `config init` stores an entered LLM API key as `llm.api_key`. Store non-secret references in config, for example an app endpoint `credential_key` that points to a credential-store entry. System keyring support can be added later without changing adapter interfaces.
 
-Environment variables use the `NASAGENT_` prefix and `__` for nested fields, for example `NASAGENT_LLM__API_KEY` or `NASAGENT_OBSERVABILITY__RUN_LOG_DIR`. Environment variables override values from `config.toml`.
+Environment variables use the `NASAGENT_` prefix and `__` for nested fields, for example `NASAGENT_LLM__API_KEY` or `NASAGENT_OBSERVABILITY__RUN_LOG_DIR`. Environment variables override values from `config.toml`. If neither environment nor config TOML supplies `llm.api_key`, runtime settings fall back to `CredentialStore.get("llm.api_key")`.
 
 Profiles select the NAS adapter. The built-in `simulator` profile is the supported phase 1 CLI path; UGREEN profiles should wait for verified API details before real operations are added.
 
@@ -68,4 +68,4 @@ Important settings:
 - `apps.<name>.app_type`: app adapter category for a configured NAS app endpoint.
 - `apps.<name>.base_url`: base URL for that app endpoint.
 - `apps.<name>.credential_key`: optional credential-store key containing the endpoint secret.
-- `plugins.<name>.enabled`: records whether a named plugin is enabled in configuration; plugin loading is not implemented yet.
+- `plugins.<name>.enabled`: records whether a named plugin is enabled in configuration. Runtime platform contexts load built-in plugins and Python entry points from the `nasagent.plugins` group.

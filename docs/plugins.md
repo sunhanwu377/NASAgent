@@ -10,3 +10,5 @@ def register(plugin: PluginContext) -> None:
 ```
 
 Plugins should namespace tools, declare risk levels accurately, and never print secrets directly.
+
+Platform-enabled CLI, chat slash commands, and the default agent tool registry load built-in plugins first and then `nasagent.plugins` entry points. `nasagent plugins list` and `/plugins` show loaded plugin manifests plus isolated entry-point load errors.

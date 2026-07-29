@@ -48,11 +48,31 @@ def _apps(context: PlatformContext, args: tuple[str, ...]) -> CommandResult:
 
 
 def _plugins(context: PlatformContext, args: tuple[str, ...]) -> CommandResult:
-    return CommandResult("Plugins: builtin")
+    lines = ["Plugins:"]
+    if context.plugin_manifests:
+        for manifest in context.plugin_manifests.values():
+            name = str(getattr(manifest, "name", "unknown"))
+            version = str(getattr(manifest, "version", "unknown"))
+            lines.append(f"- {name} {version} loaded")
+    else:
+        lines.append("- none loaded")
+    if context.plugin_errors:
+        lines.append("Plugin load errors:")
+        for error in context.plugin_errors:
+            plugin = str(getattr(error, "plugin", "unknown"))
+            message = str(getattr(error, "message", "unknown error"))
+            lines.append(f"- {plugin}: {message}")
+    return CommandResult("\n".join(lines))
 
 
 def _tools(context: PlatformContext, args: tuple[str, ...]) -> CommandResult:
-    return CommandResult("Tools are available through `nasagent tools list`")
+    tools = context.tools.list()
+    if not tools:
+        return CommandResult("Agent-callable tools: none")
+    lines = ["Agent-callable tools:"]
+    for tool in tools:
+        lines.append(f"- {tool.name} ({tool.risk_level.value}) {tool.description}")
+    return CommandResult("\n".join(lines))
 
 
 def _containers(context: PlatformContext, args: tuple[str, ...]) -> CommandResult:
