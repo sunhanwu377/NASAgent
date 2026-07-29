@@ -37,6 +37,7 @@ nasagent = "nasagent.cli.app:app"
 packages = ["src/nasagent"]
 
 [tool.pytest.ini_options]
+addopts = ["--import-mode=importlib"]
 testpaths = ["tests"]
 markers = [
   "ugreen_real: tests that require a real UGREEN NAS and local credentials",
