@@ -1,5 +1,6 @@
 import pytest
 
+from nasagent.agent.execution.react import MAX_REACT_ITERATIONS
 from nasagent.agent.execution.step_runner import StepRunner
 from nasagent.agent.planning.schemas import PlanStep
 from nasagent.config.settings import SafetySettings
@@ -104,3 +105,24 @@ async def test_step_runner_records_react_trace_for_tool_execution() -> None:
     assert iteration.thought == "Execute planned tool get_storage_status"
     assert iteration.action == "get_storage_status"
     assert "total_bytes" in iteration.observation
+
+
+@pytest.mark.asyncio
+async def test_step_runner_fails_when_expected_tools_exceed_react_limit() -> None:
+    registry = ToolRegistry()
+    registry.register(get_storage_status_tool)
+    runner = StepRunner(registry=registry, safety_policy=SafetyPolicy(SafetySettings()))
+    step = PlanStep(
+        id="s1",
+        description="Get storage repeatedly",
+        risk="read",
+        expected_tools=["get_storage_status"] * (MAX_REACT_ITERATIONS + 1),
+    )
+
+    result = await runner.run_step(step, ToolContext(adapter=SimulatorNasAdapter()))
+
+    assert result.success is False
+    assert result.error is not None
+    assert "exceeds maximum ReAct iterations" in result.error
+    assert result.tool_results == []
+    assert result.react_trace.iterations == []

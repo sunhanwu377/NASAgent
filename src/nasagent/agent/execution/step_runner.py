@@ -15,7 +15,18 @@ class StepRunner:
     async def run_step(self, step: PlanStep, context: ToolContext) -> StepResult:
         tool_results: list[ToolCallResult] = []
         react_trace = ReActTrace(max_iterations=MAX_REACT_ITERATIONS)
-        for tool_name in step.expected_tools[:MAX_REACT_ITERATIONS]:
+        if len(step.expected_tools) > MAX_REACT_ITERATIONS:
+            return StepResult(
+                step_id=step.id,
+                success=False,
+                error=(
+                    f"step expected {len(step.expected_tools)} tools, "
+                    f"exceeds maximum ReAct iterations of {MAX_REACT_ITERATIONS}"
+                ),
+                react_trace=react_trace,
+            )
+
+        for tool_name in step.expected_tools:
             tool = self._registry.get(tool_name)
             decision = self._safety_policy.evaluate(tool)
             if not decision.allowed:
