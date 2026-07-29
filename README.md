@@ -23,11 +23,11 @@ uv run mypy src
 
 ## Platform Foundation
 
-NASAgent includes an internal platform context that wires together registries for tools, slash-style commands, and NAS app endpoints. The current foundation keeps these registries available to the agent runtime without claiming built-in command packs, app discovery, or plugin loading yet.
+NASAgent includes an internal platform context that wires together registries for tools, slash-style commands, and NAS app endpoints. The plugin manager loads the built-in NAS plugin into the existing tool registry path and can record entry-point plugin load failures without stopping the platform.
 
 Configuration is loaded into `NasAgentSettings`, which includes LLM, safety, observability, app endpoint, and plugin setting models. Long-lived app credentials belong in the local credential store at `~/.local/share/nasagent/secrets.toml`, while `config.toml` stores references such as `credential_key`.
 
-Later tasks are expected to connect this foundation to plugin registration, app endpoint discovery, and higher-level integrations.
+Later tasks are expected to connect this foundation to app endpoint discovery and higher-level integrations.
 
 ## Documentation
 
