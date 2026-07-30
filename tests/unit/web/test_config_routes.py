@@ -26,7 +26,6 @@ def test_config_llm_post(tmp_path):
         data={
             "provider": "openai",
             "model": "gpt-4.1-mini",
-            "api_key": "test-key",
             "base_url": "https://api.openai.com/v1",
         },
     )
