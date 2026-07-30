@@ -49,7 +49,7 @@ class CliRenderer:
             )
             return
         self.console.print(
-            Panel(message, style="dim", border_style="green", padding=(0, 1)),
+            Panel(message, border_style="green", padding=(0, 1)),
         )
 
     def status(self, message: str) -> None:
