@@ -5,9 +5,10 @@ from nasagent.llm.messages import ChatMessage
 
 
 class Planner:
-    def __init__(self, provider: LlmProvider, tool_names: tuple[str, ...] | None = None) -> None:
+    def __init__(self, provider: LlmProvider, tool_names: tuple[str, ...] | None = None, extra_context: str = "") -> None:
         self._provider = provider
         self._tool_names = tool_names
+        self._extra_context = extra_context
 
     async def create_plan(self, goal: str) -> Plan:
         system_prompt = (
@@ -15,6 +16,8 @@ class Planner:
             if self._tool_names is not None
             else build_planner_system_prompt()
         )
+        if self._extra_context:
+            system_prompt = self._extra_context + "\n\n" + system_prompt
         content = await self._provider.complete(
             [
                 ChatMessage(role="system", content=system_prompt),

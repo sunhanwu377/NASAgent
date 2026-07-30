@@ -31,12 +31,14 @@ def build_agent_graph(
     provider: LlmProvider,
     safety_settings: SafetySettings | None = None,
     approval_provider: ApprovalProvider | None = None,
+    memory_manager: "MemoryManager | None" = None,
 ) -> Any:
     tool_registry = default_tool_registry()
 
     async def plan_node(state: GraphState) -> GraphState:
         tool_names = tuple(tool.name for tool in tool_registry.list())
-        planner = Planner(provider=provider, tool_names=tool_names)
+        memory_text = memory_manager.remember_for_llm() if memory_manager else ""
+        planner = Planner(provider=provider, tool_names=tool_names, extra_context=memory_text)
         return {"plan": await planner.create_plan(state["goal"])}
 
     async def execute_node(state: GraphState) -> GraphState:
@@ -77,12 +79,14 @@ async def run_agent_once(
     safety_settings: SafetySettings | None = None,
     run_log_dir: Path | None = None,
     approval_provider: ApprovalProvider | None = None,
+    memory_manager: "MemoryManager | None" = None,
 ) -> AgentState:
     graph = build_agent_graph(
         adapter=adapter,
         provider=provider,
         safety_settings=safety_settings,
         approval_provider=approval_provider,
+        memory_manager=memory_manager,
     )
     raw_state = cast(GraphState, await graph.ainvoke({"goal": goal}))
     state = AgentState(
