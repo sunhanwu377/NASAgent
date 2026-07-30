@@ -29,17 +29,133 @@ def show() -> None:
     typer.echo(render_toml(settings_to_toml_data(settings, redact=True)))
 
 
+def _prompt_llm(current: LlmSettings) -> LlmSettings:
+    typer.echo()
+    typer.echo("── LLM Configuration ──")
+    typer.echo(f"  provider : {current.provider}")
+    typer.echo(f"  model    : {current.model}")
+    if current.base_url:
+        typer.echo(f"  base_url : {current.base_url}")
+    else:
+        typer.echo("  base_url : (not set)")
+    api_key = None
+    try:
+        api_key = CredentialStore().get("llm.api_key")
+    except Exception:
+        pass
+    if api_key:
+        typer.echo("  api_key  : ********")
+    else:
+        typer.echo("  api_key  : (not set)")
+
+    if not typer.confirm("Modify LLM settings?", default=False):
+        return current
+
+    provider = typer.prompt("  provider", default=current.provider)
+    model = typer.prompt("  model", default=current.model)
+    base_url = typer.prompt("  base_url (optional)", default=current.base_url or "")
+    new_api_key = typer.prompt(
+        "  api_key (leave blank to keep existing)", default="", hide_input=True
+    )
+
+    if new_api_key:
+        CredentialStore().set("llm.api_key", new_api_key)
+
+    return LlmSettings(
+        provider=provider,
+        model=model,
+        base_url=base_url or None,
+    )
+
+
+def _prompt_safety(current: SafetySettings) -> SafetySettings:
+    typer.echo()
+    typer.echo("── Safety Configuration ──")
+    typer.echo(f"  default_mode              : {current.default_mode}")
+    typer.echo(f"  allow_auto_write          : {current.allow_auto_write}")
+    typer.echo(f"  allow_destructive         : {current.allow_destructive}")
+    typer.echo(f"  require_confirmation_for  : {', '.join(current.require_confirmation_for)}")
+
+    if not typer.confirm("Modify Safety settings?", default=False):
+        return current
+
+    default_mode = typer.prompt(
+        "  default_mode (confirm_destructive / allow_all / strict)",
+        default=current.default_mode,
+    )
+    allow_auto_write = typer.confirm("  allow_auto_write", default=current.allow_auto_write)
+    allow_destructive = typer.confirm("  allow_destructive", default=current.allow_destructive)
+    cfm_raw = typer.prompt(
+        "  require_confirmation_for (comma-separated tool names, blank for none)",
+        default=", ".join(current.require_confirmation_for),
+    )
+    require_confirmation_for = tuple(
+        t.strip() for t in cfm_raw.split(",") if t.strip()
+    )
+
+    return SafetySettings(
+        default_mode=default_mode,
+        allow_auto_write=allow_auto_write,
+        allow_destructive=allow_destructive,
+        require_confirmation_for=require_confirmation_for,
+    )
+
+
+def _prompt_observability(current: ObservabilitySettings) -> ObservabilitySettings:
+    typer.echo()
+    typer.echo("── Observability Configuration ──")
+    typer.echo(f"  run_log_dir      : {current.run_log_dir}")
+    typer.echo(f"  memory_dir       : {current.memory_dir}")
+    typer.echo(f"  redact_sensitive : {current.redact_sensitive}")
+
+    if not typer.confirm("Modify Observability settings?", default=False):
+        return current
+
+    run_log_dir = typer.prompt("  run_log_dir", default=current.run_log_dir)
+    memory_dir = typer.prompt("  memory_dir", default=current.memory_dir)
+    redact_sensitive = typer.confirm("  redact_sensitive", default=current.redact_sensitive)
+
+    return ObservabilitySettings(
+        run_log_dir=run_log_dir,
+        memory_dir=memory_dir,
+        redact_sensitive=redact_sensitive,
+    )
+
+
 @app.command("init")
 def init() -> None:
     config_path = default_config_path()
+
     if config_path.exists():
-        typer.echo(f"Config already exists: {config_path}")
-        typer.echo("Run `nasagent config show` to view the effective configuration.")
+        typer.echo(f"Config exists: {config_path}")
+        try:
+            settings = load_settings()
+        except tomllib.TOMLDecodeError as exc:
+            typer.echo(f"Invalid TOML: {exc}")
+            if typer.confirm("Re-initialize config from scratch?", default=False):
+                config_path.unlink()
+                # recurse to fresh init
+                return init()
+            raise typer.Exit(1) from exc
+
+        new_llm = _prompt_llm(settings.llm)
+        new_safety = _prompt_safety(settings.safety)
+        new_observability = _prompt_observability(settings.observability)
+
+        updated = NasAgentSettings(
+            llm=new_llm,
+            safety=new_safety,
+            observability=new_observability,
+            apps=settings.apps,
+            plugins=settings.plugins,
+        )
+
+        config_path.write_text(render_toml(settings_to_toml_data(updated)), encoding="utf-8")
+        typer.echo(f"\nConfig saved: {config_path}")
         return
 
+    # Fresh init
     default_llm = LlmSettings()
-    default_safety = SafetySettings()
-    default_observability = ObservabilitySettings()
     provider = typer.prompt("LLM provider", default=default_llm.provider)
     model = typer.prompt("LLM model", default=default_llm.model)
     base_url = typer.prompt("LLM base URL (optional)", default="")
@@ -71,8 +187,6 @@ def init() -> None:
             model=model,
             base_url=base_url or None,
         ),
-        safety=default_safety,
-        observability=default_observability,
     )
     if api_key:
         CredentialStore().set("llm.api_key", api_key)
