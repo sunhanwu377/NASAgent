@@ -5,7 +5,7 @@ from collections.abc import AsyncIterator, Callable
 
 import typer
 
-from nasagent.agent.graph.builder import run_agent_once
+from nasagent.agent.runner import run_agent_with_callback
 from nasagent.agent.state.models import AgentState
 from nasagent.cli.rendering.renderer import CliRenderer
 from nasagent.config.settings import (
@@ -80,14 +80,11 @@ def execute_simulator_task(
 ) -> AgentState:
     active_settings = settings or load_settings()
     return asyncio.run(
-        run_agent_once(
+        run_agent_with_callback(
             task,
             adapter=SimulatorNasAdapter(),
             provider=select_planner_provider(
-                task,
-                active_settings,
-                online=online,
-                provider_factory=provider_factory,
+                task, active_settings, online=online, provider_factory=provider_factory,
             ),
             safety_settings=active_settings.safety,
             run_log_dir=active_settings.observability.expanded_run_log_dir(),
