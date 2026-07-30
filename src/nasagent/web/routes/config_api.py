@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Annotated
 
 from fastapi import APIRouter, Depends, Form
 from fastapi.responses import HTMLResponse
@@ -16,14 +17,15 @@ from nasagent.config.settings import (
 api_router = APIRouter(prefix="/api/config", tags=["config_api"])
 
 
-def _config_path_dep(path: Path | None = None) -> Path:
-    if path is not None:
-        return path
+def get_config_path() -> Path:
     return default_config_path()
 
 
+ConfigPath = Annotated[Path, Depends(get_config_path)]
+
+
 @api_router.get("/show")
-async def config_show(config_path: Path = Depends(_config_path_dep)):
+async def config_show(config_path: ConfigPath):
     settings = load_settings(path=config_path)
     return settings_to_toml_data(settings, redact=True)
 
@@ -34,7 +36,7 @@ async def config_llm(
     model: str = Form("gpt-4.1-mini"),
     api_key: str = Form(""),
     base_url: str = Form(""),
-    config_path: Path = Depends(_config_path_dep),
+    config_path: ConfigPath = ConfigPath,
 ):
     config_data = load_config_file(config_path)
     llm = config_data.setdefault("llm", {})
@@ -60,7 +62,7 @@ async def config_safety(
     allow_auto_write: bool = Form(False),
     allow_destructive: bool = Form(False),
     require_confirmation_for: str = Form(""),
-    config_path: Path = Depends(_config_path_dep),
+    config_path: ConfigPath = ConfigPath,
 ):
     config_data = load_config_file(config_path)
     safety = config_data.setdefault("safety", {})
@@ -87,13 +89,19 @@ async def config_app_add(
     app_type: str = Form(...),
     base_url: str = Form(...),
     credential_key: str = Form(""),
-    config_path: Path = Depends(_config_path_dep),
+    config_path: ConfigPath = ConfigPath,
 ):
-    persist_app_config(name, app_type, base_url, credential_key=credential_key or None, config_path=config_path)
-    return HTMLResponse(f"<script>alert('App {name} added'); window.location='/settings'</script>")
+    persist_app_config(
+        name, app_type, base_url,
+        credential_key=credential_key or None,
+        config_path=config_path,
+    )
+    return HTMLResponse(
+        f"<script>alert('App {name} added'); window.location='/settings'</script>"
+    )
 
 
 @api_router.get("/")
-async def config_current(config_path: Path = Depends(_config_path_dep)):
+async def config_current(config_path: ConfigPath):
     settings = load_settings(path=config_path)
     return settings_to_toml_data(settings, redact=True)

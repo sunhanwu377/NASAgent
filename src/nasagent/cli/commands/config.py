@@ -29,6 +29,12 @@ def show() -> None:
     typer.echo(render_toml(settings_to_toml_data(settings, redact=True)))
 
 
+def _prompt_str(label: str, current: str) -> str:
+    """Prompt for a string value. Empty input keeps the original."""
+    value = typer.prompt(f"  {label} [{current}]", default="", show_default=False)
+    return value.strip() if value.strip() else current
+
+
 def _prompt_llm(current: LlmSettings) -> LlmSettings:
     typer.echo()
     typer.echo("── LLM Configuration ──")
@@ -47,15 +53,17 @@ def _prompt_llm(current: LlmSettings) -> LlmSettings:
         typer.echo("  api_key  : ********")
     else:
         typer.echo("  api_key  : (not set)")
+    typer.echo("  (press Enter to keep current value)")
 
     if not typer.confirm("Modify LLM settings?", default=False):
         return current
 
-    provider = typer.prompt("  provider", default=current.provider)
-    model = typer.prompt("  model", default=current.model)
-    base_url = typer.prompt("  base_url (optional)", default=current.base_url or "")
+    provider = _prompt_str("provider", current.provider)
+    model = _prompt_str("model", current.model)
+    base_url_raw = _prompt_str("base_url", current.base_url or "")
+    base_url = base_url_raw if base_url_raw else None
     new_api_key = typer.prompt(
-        "  api_key (leave blank to keep existing)", default="", hide_input=True
+        "  api_key (leave blank to keep existing)", default="", hide_input=True, show_default=False,
     )
 
     if new_api_key:
@@ -64,7 +72,7 @@ def _prompt_llm(current: LlmSettings) -> LlmSettings:
     return LlmSettings(
         provider=provider,
         model=model,
-        base_url=base_url or None,
+        base_url=base_url,
     )
 
 
@@ -74,24 +82,29 @@ def _prompt_safety(current: SafetySettings) -> SafetySettings:
     typer.echo(f"  default_mode              : {current.default_mode}")
     typer.echo(f"  allow_auto_write          : {current.allow_auto_write}")
     typer.echo(f"  allow_destructive         : {current.allow_destructive}")
-    typer.echo(f"  require_confirmation_for  : {', '.join(current.require_confirmation_for)}")
+    if current.require_confirmation_for:
+        cfm_display = ", ".join(current.require_confirmation_for)
+    else:
+        cfm_display = "(none)"
+    typer.echo(f"  require_confirmation_for  : {cfm_display}")
+    typer.echo("  (press Enter to keep current value)")
 
     if not typer.confirm("Modify Safety settings?", default=False):
         return current
 
-    default_mode = typer.prompt(
-        "  default_mode (confirm_destructive / allow_all / strict)",
-        default=current.default_mode,
-    )
+    default_mode = _prompt_str("default_mode", current.default_mode)
     allow_auto_write = typer.confirm("  allow_auto_write", default=current.allow_auto_write)
     allow_destructive = typer.confirm("  allow_destructive", default=current.allow_destructive)
     cfm_raw = typer.prompt(
-        "  require_confirmation_for (comma-separated tool names, blank for none)",
-        default=", ".join(current.require_confirmation_for),
+        "  require_confirmation_for [comma-separated, blank for none]",
+        default="", show_default=False,
     )
-    require_confirmation_for = tuple(
-        t.strip() for t in cfm_raw.split(",") if t.strip()
-    )
+    if cfm_raw.strip():
+        require_confirmation_for = tuple(
+            t.strip() for t in cfm_raw.split(",") if t.strip()
+        )
+    else:
+        require_confirmation_for = current.require_confirmation_for
 
     return SafetySettings(
         default_mode=default_mode,
@@ -107,12 +120,13 @@ def _prompt_observability(current: ObservabilitySettings) -> ObservabilitySettin
     typer.echo(f"  run_log_dir      : {current.run_log_dir}")
     typer.echo(f"  memory_dir       : {current.memory_dir}")
     typer.echo(f"  redact_sensitive : {current.redact_sensitive}")
+    typer.echo("  (press Enter to keep current value)")
 
     if not typer.confirm("Modify Observability settings?", default=False):
         return current
 
-    run_log_dir = typer.prompt("  run_log_dir", default=current.run_log_dir)
-    memory_dir = typer.prompt("  memory_dir", default=current.memory_dir)
+    run_log_dir = _prompt_str("run_log_dir", current.run_log_dir)
+    memory_dir = _prompt_str("memory_dir", current.memory_dir)
     redact_sensitive = typer.confirm("  redact_sensitive", default=current.redact_sensitive)
 
     return ObservabilitySettings(

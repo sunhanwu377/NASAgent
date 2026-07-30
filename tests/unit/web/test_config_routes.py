@@ -2,14 +2,14 @@ from pathlib import Path
 
 from fastapi.testclient import TestClient
 
-from nasagent.web.routes.config_api import _config_path_dep
+from nasagent.web.routes.config_api import get_config_path
 from nasagent.web.server import create_app
 
 
 def _make_client(tmp_dir: Path):
     tmp_config = tmp_dir / "config.toml"
     app = create_app()
-    app.dependency_overrides[_config_path_dep] = lambda: tmp_config
+    app.dependency_overrides[get_config_path] = lambda: tmp_config
     return TestClient(app), tmp_config
 
 
