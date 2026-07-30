@@ -13,12 +13,14 @@ def create_app() -> FastAPI:
     if static_dir.exists():
         app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
 
-    # Routes will be added in subsequent tasks
+    # Routes
     from nasagent.web.routes import chat as chat_routes
     from nasagent.web.routes import config as config_routes
+    from nasagent.web.routes import health as health_routes
 
     app.include_router(chat_routes.router)
     app.include_router(config_routes.router, prefix="/settings")
+    app.include_router(health_routes.router)
 
     from nasagent.web.templates import configure_templates
     configure_templates(app, str(templates_dir))
