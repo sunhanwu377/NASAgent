@@ -1,7 +1,9 @@
 import asyncio
 import atexit
+import locale
 import readline
 import re
+import sys
 import tomllib
 from pathlib import Path
 
@@ -104,6 +106,7 @@ def chat(
     memory_manager.ensure_session("default")
 
     # Initialize command history
+    _configure_readline()
     _init_readline_history(memory_dir / "history")
 
     renderer.banner(profile=profile, provider=settings_provider, streaming=stream)
@@ -116,6 +119,8 @@ def chat(
         if task.strip():
             readline.add_history(task)
         task = task.strip()
+        if task:
+            renderer.user_input(task)
         if task.lower() in {"exit", "quit"}:
             renderer.status("Goodbye")
             break
@@ -248,6 +253,18 @@ async def _stream_conversation_response(
 
 
 HISTORY_LIMIT = 1000
+
+
+def _configure_readline() -> None:
+    try:
+        locale.setlocale(locale.LC_ALL, "")
+    except locale.Error:
+        pass
+    if sys.platform == "darwin":
+        try:
+            readline.parse_and_bind("set byte-oriented off")
+        except Exception:
+            pass
 
 
 def _init_readline_history(path: Path) -> None:

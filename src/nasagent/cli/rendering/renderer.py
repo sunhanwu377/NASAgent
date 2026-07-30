@@ -6,6 +6,7 @@ from pathlib import Path
 
 from rich.console import Console
 from rich.markdown import Markdown
+from rich.panel import Panel
 from rich.status import Status
 from rich.text import Text
 
@@ -27,6 +28,11 @@ class CliRenderer:
 
     def prompt(self) -> None:
         self.console.print(_label("you", ">", "bold cyan"), end="")
+
+    def user_input(self, text: str) -> None:
+        self.console.print(
+            Panel(text, style="dim", border_style="cyan", padding=(0, 1)),
+        )
 
     def agent_start(self) -> None:
         self.console.print(_label("agent", ">", "bold green"), end="")
