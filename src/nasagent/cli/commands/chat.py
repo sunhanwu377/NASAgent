@@ -87,7 +87,7 @@ def chat(
         help="Stream conversational LLM responses as they are generated.",
     ),
     tui: bool = typer.Option(
-        False,
+        True,
         "--tui/--no-tui",
         help="Use Textual TUI interface instead of simple REPL.",
     ),
