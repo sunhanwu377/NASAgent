@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}LLM Settings{% endblock %}
+{% block content %}
+<div class="settings-container">
+    <h1>LLM Configuration</h1>
+    <form method="post" action="/settings/api/config/llm" class="settings-form">
+        <label>Provider <input name="provider" value="{{ settings.llm.provider }}"></label>
+        <label>Model <input name="model" value="{{ settings.llm.model }}"></label>
+        <label>Base URL <input name="base_url" value="{{ settings.llm.base_url or '' }}" placeholder="https://api.openai.com/v1"></label>
+        <label>API Key <input name="api_key" type="password" placeholder="Leave blank to keep existing"></label>
+        <button type="submit">Save</button>
+        <a href="/settings" class="btn-back">Back</a>
+    </form>
+</div>
+{% endblock %}

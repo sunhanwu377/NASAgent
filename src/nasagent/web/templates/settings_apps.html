@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}App Settings{% endblock %}
+{% block content %}
+<div class="settings-container">
+    <h1>App Endpoints</h1>
+    <table class="app-table">
+        <thead><tr><th>Name</th><th>Type</th><th>URL</th></tr></thead>
+        <tbody>
+        {% for name, app in apps.items() %}
+        <tr><td>{{ name }}</td><td>{{ app.app_type }}</td><td>{{ app.base_url }}</td></tr>
+        {% endfor %}
+        </tbody>
+    </table>
+    <h2 style="margin-top:24px">Add App</h2>
+    <form method="post" action="/settings/api/config/app/add" class="settings-form">
+        <label>Name <input name="name" required></label>
+        <label>Type
+            <select name="app_type">
+                {% for key, info in app_types.items() %}
+                <option value="{{ key }}">{{ key }} — {{ info.description }}</option>
+                {% endfor %}
+            </select>
+        </label>
+        <label>Base URL <input name="base_url" required placeholder="http://nas.local:5244"></label>
+        <label>Credential Key <input name="credential_key" placeholder="optional"></label>
+        <button type="submit">Add</button>
+        <a href="/settings" class="btn-back">Back</a>
+    </form>
+</div>
+{% endblock %}

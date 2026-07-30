@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Safety Settings{% endblock %}
+{% block content %}
+<div class="settings-container">
+    <h1>Safety Configuration</h1>
+    <form method="post" action="/settings/api/config/safety" class="settings-form">
+        <label>Default Mode
+            <select name="default_mode">
+                <option value="confirm_destructive" {% if settings.safety.default_mode == "confirm_destructive" %}selected{% endif %}>Confirm Destructive</option>
+                <option value="allow_all" {% if settings.safety.default_mode == "allow_all" %}selected{% endif %}>Allow All</option>
+                <option value="strict" {% if settings.safety.default_mode == "strict" %}selected{% endif %}>Strict</option>
+            </select>
+        </label>
+        <label><input type="checkbox" name="allow_auto_write" {% if settings.safety.allow_auto_write %}checked{% endif %}> Allow Auto Write</label>
+        <label><input type="checkbox" name="allow_destructive" {% if settings.safety.allow_destructive %}checked{% endif %}> Allow Destructive</label>
+        <label>Require Confirmation For <input name="require_confirmation_for" value="{{ settings.safety.require_confirmation_for | join(', ') }}" placeholder="tool names comma-separated"></label>
+        <button type="submit">Save</button>
+        <a href="/settings" class="btn-back">Back</a>
+    </form>
+</div>
+{% endblock %}

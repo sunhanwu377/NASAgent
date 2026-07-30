@@ -3,6 +3,19 @@
 {% block content %}
 <div class="settings-container">
     <h1>Settings</h1>
-    <p>Configuration pages will be added here.</p>
+    <div class="settings-grid">
+        <a href="/settings/llm" class="settings-card">
+            <h2>LLM</h2>
+            <p>Configure AI provider, model, and API key</p>
+        </a>
+        <a href="/settings/safety" class="settings-card">
+            <h2>Safety</h2>
+            <p>Safety policy and confirmation settings</p>
+        </a>
+        <a href="/settings/apps" class="settings-card">
+            <h2>Apps</h2>
+            <p>Manage NAS app endpoints (AList, Vaultwarden, etc.)</p>
+        </a>
+    </div>
 </div>
 {% endblock %}
