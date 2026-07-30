@@ -50,7 +50,8 @@ def _prompt_llm(current: LlmSettings) -> LlmSettings:
     except Exception:
         pass
     if api_key:
-        typer.echo("  api_key  : ********")
+        masked = api_key if len(api_key) <= 10 else f"{api_key[:4]}***{api_key[-4:]}"
+        typer.echo(f"  api_key  : {masked}")
     else:
         typer.echo("  api_key  : (not set)")
     typer.echo("  (press Enter to keep current value)")
