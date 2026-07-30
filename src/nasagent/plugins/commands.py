@@ -1,3 +1,4 @@
+from nasagent.config.settings import KNOWN_APP_TYPES, persist_app_config
 from nasagent.platform.commands import CommandDefinition, CommandResult
 from nasagent.platform.context import PlatformContext
 
@@ -8,7 +9,10 @@ def register_builtin_commands(context: PlatformContext) -> None:
     )
     context.commands.register(
         CommandDefinition(
-            "apps", "List configured apps", "/apps", lambda args: _apps(context, args)
+            "apps",
+            "List supported apps and manage configuration",
+            "/apps [type|configure ...]",
+            lambda args: _apps(context, args),
         )
     )
     context.commands.register(
@@ -35,16 +39,108 @@ def _help(context: PlatformContext, args: tuple[str, ...]) -> CommandResult:
 
 
 def _apps(context: PlatformContext, args: tuple[str, ...]) -> CommandResult:
-    apps = context.apps.list()
-    if not apps:
-        return CommandResult("Configured apps: none")
-    lines = ["Configured apps:"]
-    for endpoint in apps:
-        credential = endpoint.credential_key or "none"
-        lines.append(
-            f"- {endpoint.name} ({endpoint.app_type}) {endpoint.base_url} credential={credential}"
+    if args and args[0] == "configure":
+        return _apps_configure(context, args[1:])
+    if args:
+        return _apps_detail(context, args[0])
+    return _apps_overview(context)
+
+
+def _apps_overview(context: PlatformContext) -> CommandResult:
+    configured = {endpoint.app_type: endpoint for endpoint in context.apps.list()}
+
+    lines = ["Supported apps:"]
+    for app_type, meta in KNOWN_APP_TYPES.items():
+        if app_type in configured:
+            endpoint = configured[app_type]
+            status = f"  configured ✓"
+            detail = f"    name={endpoint.name}  base_url={endpoint.base_url}"
+            if endpoint.credential_key:
+                detail += f"  credential={endpoint.credential_key}"
+        else:
+            status = "  not configured ✗"
+            detail = f"    hint: /apps configure {app_type} <name> <base_url> [credential_key]"
+        lines.append(f"  {app_type}: {meta['description']}")
+        lines.append(status)
+        lines.append(detail)
+        lines.append("")
+
+    return CommandResult("\n".join(lines).rstrip())
+
+
+def _apps_detail(context: PlatformContext, app_type: str) -> CommandResult:
+    meta = KNOWN_APP_TYPES.get(app_type)
+    if meta is None:
+        known = ", ".join(KNOWN_APP_TYPES.keys())
+        return CommandResult(
+            f"Unknown app type: {app_type}\nSupported types: {known}", exit_code=1
         )
+
+    endpoints = context.apps.list(app_type=app_type)
+    lines = [f"{app_type}: {meta['description']}", f"Default port: {meta['default_port']}", ""]
+
+    if endpoints:
+        lines.append("Configured endpoints:")
+        for endpoint in endpoints:
+            credential = endpoint.credential_key or "none"
+            lines.append(
+                f"  - {endpoint.name}  base_url={endpoint.base_url}  credential={credential}"
+            )
+    else:
+        lines.append("No endpoints configured.")
+        lines.append("")
+        lines.append("To configure, run:")
+        lines.append(
+            f"  /apps configure {app_type} <name> <base_url> [credential_key]"
+        )
+        lines.append("")
+        lines.append("Example:")
+        lines.append(
+            f"  /apps configure {app_type} home http://nas.local:{meta['default_port']}"
+        )
+
     return CommandResult("\n".join(lines))
+
+
+def _apps_configure(context: PlatformContext, args: tuple[str, ...]) -> CommandResult:
+    if len(args) < 3:
+        return CommandResult(
+            "Usage: /apps configure <app_type> <name> <base_url> [credential_key]\n"
+            "Example: /apps configure alist home http://nas.local:5244",
+            exit_code=1,
+        )
+
+    app_type, name, base_url = args[0], args[1], args[2]
+    credential_key = args[3] if len(args) > 3 else None
+
+    if app_type not in KNOWN_APP_TYPES:
+        known = ", ".join(KNOWN_APP_TYPES.keys())
+        return CommandResult(
+            f"Unknown app type: {app_type}\nSupported types: {known}", exit_code=1
+        )
+
+    if context.apps.get(name):
+        return CommandResult(
+            f"App endpoint '{name}' is already configured.\n"
+            f"Edit ~/.config/nasagent/config.toml to update.",
+            exit_code=1,
+        )
+
+    try:
+        config_path = persist_app_config(
+            name=name,
+            app_type=app_type,
+            base_url=base_url,
+            credential_key=credential_key,
+        )
+    except Exception as exc:
+        return CommandResult(f"Failed to persist config: {exc}", exit_code=1)
+
+    return CommandResult(
+        f"App configured and saved to {config_path}\n"
+        f"  {name}: {app_type} → {base_url}\n"
+        f"Restart nasagent to activate the endpoint."
+    )
 
 
 def _plugins(context: PlatformContext, args: tuple[str, ...]) -> CommandResult:

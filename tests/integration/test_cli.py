@@ -112,7 +112,7 @@ def test_apps_list_command_smoke(cli_runner) -> None:  # type: ignore[no-untyped
     result = cli_runner.invoke(app, ["apps", "list"])
 
     assert result.exit_code == 0
-    assert "Configured apps" in result.output
+    assert "Supported apps:" in result.output
 
 
 def test_apps_list_command_reads_configured_apps(cli_runner, tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
@@ -133,6 +133,7 @@ def test_apps_list_command_reads_configured_apps(cli_runner, tmp_path: Path, mon
     assert "alist" in result.output
     assert "http://nas.local:5244" in result.output
     assert "alist.home.token" in result.output
+    assert "configured" in result.output.lower()
 
 
 def test_plugins_list_command_smoke(cli_runner) -> None:  # type: ignore[no-untyped-def]
@@ -331,7 +332,7 @@ def test_chat_apps_slash_lists_configured_apps(tmp_path: Path, monkeypatch) -> N
     result = runner.invoke(app, ["chat", "--profile", "simulator"], input="/apps\nexit\n")
 
     assert result.exit_code == 0
-    assert "Configured apps:" in result.output
+    assert "Supported apps:" in result.output
     assert "home" in result.output
     assert "alist" in result.output
     assert "http://nas.local:5244" in result.output

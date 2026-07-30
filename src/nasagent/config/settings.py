@@ -7,6 +7,21 @@ from pydantic_settings import BaseSettings, EnvSettingsSource, SettingsConfigDic
 
 from nasagent.config.secrets import CredentialStore
 
+KNOWN_APP_TYPES: dict[str, dict[str, str]] = {
+    "alist": {
+        "description": "AList file manager — browse and manage files across multiple storage backends",
+        "default_port": "5244",
+    },
+    "vaultwarden": {
+        "description": "Vaultwarden password manager — self-hosted Bitwarden-compatible server",
+        "default_port": "8443",
+    },
+    "lucky": {
+        "description": "Lucky media server — Jellyfin-compatible home media streaming",
+        "default_port": "8096",
+    },
+}
+
 DEFAULT_CONFIG_PATH = Path("~/.config/nasagent/config.toml")
 
 
@@ -130,6 +145,40 @@ def _drop_none(value: Any) -> Any:
     if isinstance(value, list):
         return [_drop_none(item) for item in value]
     return value
+
+
+def persist_app_config(
+    name: str,
+    app_type: str,
+    base_url: str,
+    credential_key: str | None = None,
+    frontend_url: str | None = None,
+    notes: str | None = None,
+    *,
+    config_path: Path | None = None,
+) -> Path:
+    target = config_path or default_config_path()
+    existing_data = load_config_file(target)
+
+    app_entry: dict[str, object] = {
+        "app_type": app_type,
+        "base_url": base_url,
+    }
+    if credential_key:
+        app_entry["credential_key"] = credential_key
+    if frontend_url:
+        app_entry["frontend_url"] = frontend_url
+    if notes:
+        app_entry["notes"] = notes
+
+    if "apps" not in existing_data:
+        existing_data["apps"] = {}
+    existing_apps = cast(dict[str, object], existing_data["apps"])
+    existing_apps[name] = app_entry
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(render_toml(existing_data), encoding="utf-8")
+    return target
 
 
 def _merge_dict(target: dict[str, object], source: dict[str, object]) -> None:
