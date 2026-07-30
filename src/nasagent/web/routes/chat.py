@@ -12,7 +12,7 @@ router = APIRouter(tags=["chat"])
 
 @router.get("/", response_class=HTMLResponse)
 async def chat_page(request: Request):
-    return get_templates().TemplateResponse("chat.html", {"request": request})
+    return get_templates().TemplateResponse(request, "chat.html", {"request": request})
 
 
 class WebSocketStreamCallback:
