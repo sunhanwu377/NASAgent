@@ -41,10 +41,14 @@ class SafetySettings(BaseModel):
 
 class ObservabilitySettings(BaseModel):
     run_log_dir: str = "~/.nasagent/runs"
+    memory_dir: str = "~/.nasagent/memory"
     redact_sensitive: bool = True
 
     def expanded_run_log_dir(self) -> Path:
         return Path(self.run_log_dir).expanduser()
+
+    def expanded_memory_dir(self) -> Path:
+        return Path(self.memory_dir).expanduser()
 
 
 class AppEndpointSettings(BaseModel):
