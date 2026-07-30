@@ -88,8 +88,8 @@ def chat(
         )
     renderer = CliRenderer()
     settings_provider = None
-    settings = load_settings()
     try:
+        settings = load_settings()
         settings_provider = settings.llm.provider
     except tomllib.TOMLDecodeError as exc:
         config_path = default_config_path()
