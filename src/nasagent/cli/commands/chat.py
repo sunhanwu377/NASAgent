@@ -11,6 +11,8 @@ from nasagent.llm.messages import ChatMessage
 from nasagent.llm.openai_provider import OpenAiProvider
 from nasagent.platform.context import create_platform_context
 from nasagent.platform.plugins import load_platform_plugins
+from nasagent.memory import MemoryManager
+from nasagent.plugins.commands import register_memory_commands
 
 GREETING_INPUTS = {"hello", "hi", "hey", "你好", "您好", "嗨"}
 ENGLISH_TASK_ACTION_KEYWORDS = {
@@ -86,12 +88,17 @@ def chat(
         )
     renderer = CliRenderer()
     settings_provider = None
+    settings = load_settings()
     try:
-        settings_provider = load_settings().llm.provider
+        settings_provider = settings.llm.provider
     except tomllib.TOMLDecodeError as exc:
         config_path = default_config_path()
         renderer.config_error(config_path, exc)
         raise typer.Exit(1) from exc
+    # Initialize memory
+    memory_dir = settings.observability.expanded_memory_dir()
+    memory_manager = MemoryManager(memory_dir, None)
+    memory_manager.ensure_session("default")
     renderer.banner(profile=profile, provider=settings_provider, streaming=stream)
     while True:
         renderer.prompt()
@@ -108,6 +115,7 @@ def chat(
         if task.startswith("/"):
             context = create_platform_context(settings=load_settings())
             load_platform_plugins(context)
+            register_memory_commands(context, memory_manager)
             result = context.commands.dispatch(task)
             renderer.agent_message(result.message)
             continue
@@ -116,7 +124,9 @@ def chat(
             continue
         if not _looks_like_execution_intent(task):
             try:
-                _print_conversation_response(task, online=online, stream=stream, renderer=renderer)
+                if memory_manager.conversation_memory:
+                    memory_manager.conversation_memory.add_message("user", task)
+                _print_conversation_response(task, online=online, stream=stream, renderer=renderer, memory_manager=memory_manager)
             except tomllib.TOMLDecodeError as exc:
                 config_path = default_config_path()
                 renderer.config_error(config_path, exc)
@@ -124,7 +134,13 @@ def chat(
             continue
         try:
             with renderer.spinner("system", "planning and running task"):
+                if memory_manager.conversation_memory:
+                    memory_manager.conversation_memory.add_message("user", task)
                 state = execute_simulator_task(task, online=online)
+                if memory_manager.conversation_memory:
+                    memory_manager.conversation_memory.add_message(
+                        "assistant", state.final_summary or "Task completed."
+                    )
         except tomllib.TOMLDecodeError as exc:
             config_path = default_config_path()
             renderer.config_error(config_path, exc)
@@ -159,8 +175,13 @@ def _looks_like_execution_intent(task: str) -> bool:
     return has_action and has_resource
 
 
+def _to_chat_message(msg: dict) -> ChatMessage:
+    return ChatMessage(role=msg["role"], content=msg["content"])
+
+
 def _print_conversation_response(
-    task: str, *, online: bool | None, stream: bool, renderer: CliRenderer
+    task: str, *, online: bool | None, stream: bool, renderer: CliRenderer,
+    memory_manager: MemoryManager,
 ) -> None:
     settings = load_settings()
     use_online = online if online is not None else settings.llm.api_key is not None
@@ -171,17 +192,20 @@ def _print_conversation_response(
         )
         return
     provider = OpenAiProvider(settings.llm)
-    messages = _conversation_messages(task)
+    messages = [_to_chat_message(m) for m in memory_manager.inject_context()]
     if stream:
-        asyncio.run(_stream_conversation_response(provider, messages, renderer))
+        asyncio.run(_stream_conversation_response(provider, messages, renderer, memory_manager))
         return
     with renderer.spinner("system", "waiting for LLM"):
         response = asyncio.run(provider.complete(messages))
     renderer.agent_message(response)
+    if memory_manager.conversation_memory:
+        memory_manager.conversation_memory.add_message("assistant", response)
 
 
 async def _stream_conversation_response(
-    provider: OpenAiProvider, messages: list[ChatMessage], renderer: CliRenderer
+    provider: OpenAiProvider, messages: list[ChatMessage], renderer: CliRenderer,
+    memory_manager: MemoryManager,
 ) -> None:
     stream = provider.stream_complete(messages)
     chunks: list[str] = []
@@ -193,11 +217,16 @@ async def _stream_conversation_response(
                 break
     if not chunks:
         renderer.agent_message("")
+        if memory_manager.conversation_memory:
+            memory_manager.conversation_memory.add_message("assistant", "")
         return
     if looks_like_markdown("".join(chunks)):
         async for chunk in stream:
             chunks.append(chunk)
-        renderer.agent_message("".join(chunks))
+        full = "".join(chunks)
+        renderer.agent_message(full)
+        if memory_manager.conversation_memory:
+            memory_manager.conversation_memory.add_message("assistant", full)
         return
     renderer.agent_start()
     for chunk in chunks:
@@ -205,16 +234,5 @@ async def _stream_conversation_response(
     async for chunk in stream:
         renderer.agent_chunk(chunk)
     renderer.agent_end()
-
-
-def _conversation_messages(task: str) -> list[ChatMessage]:
-    return [
-        ChatMessage(
-            role="system",
-            content=(
-                "You are NASAgent's chat assistant. Answer conversational questions "
-                "directly. Do not claim that tools were executed."
-            ),
-        ),
-        ChatMessage(role="user", content=task),
-    ]
+    if memory_manager.conversation_memory:
+        memory_manager.conversation_memory.add_message("assistant", "".join(chunks))
