@@ -1,16 +1,26 @@
+from pathlib import Path
+
 from fastapi.testclient import TestClient
 
+from nasagent.web.routes.config_api import _config_path_dep
 from nasagent.web.server import create_app
 
 
-def test_config_api_show():
-    client = TestClient(create_app())
+def _make_client(tmp_dir: Path):
+    tmp_config = tmp_dir / "config.toml"
+    app = create_app()
+    app.dependency_overrides[_config_path_dep] = lambda: tmp_config
+    return TestClient(app), tmp_config
+
+
+def test_config_api_show(tmp_path):
+    client, _ = _make_client(tmp_path)
     response = client.get("/settings/api/config/show")
     assert response.status_code == 200
 
 
-def test_config_llm_post():
-    client = TestClient(create_app())
+def test_config_llm_post(tmp_path):
+    client, config_path = _make_client(tmp_path)
     response = client.post(
         "/settings/api/config/llm",
         data={
@@ -21,22 +31,28 @@ def test_config_llm_post():
         },
     )
     assert response.status_code == 200
+    assert config_path.exists()
+    content = config_path.read_text()
+    assert "openai" in content
 
 
-def test_config_safety_post():
-    client = TestClient(create_app())
+def test_config_safety_post(tmp_path):
+    client, config_path = _make_client(tmp_path)
     response = client.post(
         "/settings/api/config/safety",
         data={
-            "default_mode": "confirm_destructive",
+            "default_mode": "strict",
             "allow_auto_write": "on",
         },
     )
     assert response.status_code == 200
+    assert config_path.exists()
+    content = config_path.read_text()
+    assert "strict" in content
 
 
-def test_config_app_add():
-    client = TestClient(create_app())
+def test_config_app_add(tmp_path):
+    client, config_path = _make_client(tmp_path)
     response = client.post(
         "/settings/api/config/app/add",
         data={
@@ -46,3 +62,6 @@ def test_config_app_add():
         },
     )
     assert response.status_code == 200
+    assert config_path.exists()
+    content = config_path.read_text()
+    assert "test_alist" in content

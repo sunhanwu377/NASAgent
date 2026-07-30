@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Form
+from pathlib import Path
+
+from fastapi import APIRouter, Depends, Form
 from fastapi.responses import HTMLResponse
 
 from nasagent.config.secrets import CredentialStore
@@ -14,9 +16,15 @@ from nasagent.config.settings import (
 api_router = APIRouter(prefix="/api/config", tags=["config_api"])
 
 
+def _config_path_dep(path: Path | None = None) -> Path:
+    if path is not None:
+        return path
+    return default_config_path()
+
+
 @api_router.get("/show")
-async def config_show():
-    settings = load_settings()
+async def config_show(config_path: Path = Depends(_config_path_dep)):
+    settings = load_settings(path=config_path)
     return settings_to_toml_data(settings, redact=True)
 
 
@@ -26,8 +34,9 @@ async def config_llm(
     model: str = Form("gpt-4.1-mini"),
     api_key: str = Form(""),
     base_url: str = Form(""),
+    config_path: Path = Depends(_config_path_dep),
 ):
-    config_data = load_config_file()
+    config_data = load_config_file(config_path)
     llm = config_data.setdefault("llm", {})
     llm["provider"] = provider
     llm["model"] = model
@@ -36,9 +45,8 @@ async def config_llm(
     elif "base_url" in llm:
         del llm["base_url"]
 
-    target = default_config_path()
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(render_toml(config_data), encoding="utf-8")
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(render_toml(config_data), encoding="utf-8")
 
     if api_key:
         CredentialStore().set("llm.api_key", api_key)
@@ -52,8 +60,9 @@ async def config_safety(
     allow_auto_write: bool = Form(False),
     allow_destructive: bool = Form(False),
     require_confirmation_for: str = Form(""),
+    config_path: Path = Depends(_config_path_dep),
 ):
-    config_data = load_config_file()
+    config_data = load_config_file(config_path)
     safety = config_data.setdefault("safety", {})
     safety["default_mode"] = default_mode
     safety["allow_auto_write"] = allow_auto_write
@@ -65,9 +74,8 @@ async def config_safety(
     elif "require_confirmation_for" in safety:
         del safety["require_confirmation_for"]
 
-    target = default_config_path()
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(render_toml(config_data), encoding="utf-8")
+    config_path.parent.mkdir(parents=True, exist_ok=True)
+    config_path.write_text(render_toml(config_data), encoding="utf-8")
     return HTMLResponse(
         "<script>alert('Safety settings saved'); window.location='/settings'</script>"
     )
@@ -79,12 +87,13 @@ async def config_app_add(
     app_type: str = Form(...),
     base_url: str = Form(...),
     credential_key: str = Form(""),
+    config_path: Path = Depends(_config_path_dep),
 ):
-    persist_app_config(name, app_type, base_url, credential_key=credential_key or None)
+    persist_app_config(name, app_type, base_url, credential_key=credential_key or None, config_path=config_path)
     return HTMLResponse(f"<script>alert('App {name} added'); window.location='/settings'</script>")
 
 
 @api_router.get("/")
-async def config_current():
-    settings = load_settings()
+async def config_current(config_path: Path = Depends(_config_path_dep)):
+    settings = load_settings(path=config_path)
     return settings_to_toml_data(settings, redact=True)
