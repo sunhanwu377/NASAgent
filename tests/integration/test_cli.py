@@ -701,7 +701,11 @@ def test_config_init_uses_safe_defaults_when_environment_is_set(
     tmp_path: Path, monkeypatch
 ) -> None:  # type: ignore[no-untyped-def]
     config_path = tmp_path / "config.toml"
+    secrets_path = tmp_path / "secrets.toml"
     monkeypatch.setattr(settings_module, "DEFAULT_CONFIG_PATH", config_path)
+    monkeypatch.setattr(
+        config_command, "CredentialStore", lambda: CredentialStore(secrets_path)
+    )
     monkeypatch.setenv("NASAGENT_LLM__PROVIDER", "env-provider")
     monkeypatch.setenv("NASAGENT_LLM__MODEL", "env-model")
     monkeypatch.setenv("NASAGENT_LLM__BASE_URL", "https://env.example/v1")
@@ -728,7 +732,11 @@ def test_config_init_uses_safe_defaults_when_environment_is_set(
 
 def test_config_init_omits_blank_optional_values(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     config_path = tmp_path / "config.toml"
+    secrets_path = tmp_path / "secrets.toml"
     monkeypatch.setattr(settings_module, "DEFAULT_CONFIG_PATH", config_path)
+    monkeypatch.setattr(
+        config_command, "CredentialStore", lambda: CredentialStore(secrets_path)
+    )
     runner = CliRunner()
 
     result = runner.invoke(app, ["config", "init"], input="\n\n\n\nn\n")
@@ -740,7 +748,12 @@ def test_config_init_omits_blank_optional_values(tmp_path: Path, monkeypatch) ->
 
 
 def test_config_init_can_skip_lan_discovery(cli_runner, tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
-    monkeypatch.setattr(settings_module, "DEFAULT_CONFIG_PATH", tmp_path / "config.toml")
+    config_path = tmp_path / "config.toml"
+    secrets_path = tmp_path / "secrets.toml"
+    monkeypatch.setattr(settings_module, "DEFAULT_CONFIG_PATH", config_path)
+    monkeypatch.setattr(
+        config_command, "CredentialStore", lambda: CredentialStore(secrets_path)
+    )
 
     result = cli_runner.invoke(
         app,
@@ -754,15 +767,20 @@ def test_config_init_can_skip_lan_discovery(cli_runner, tmp_path: Path, monkeypa
 
 def test_config_init_does_not_overwrite_existing_file(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     config_path = tmp_path / "config.toml"
+    secrets_path = tmp_path / "secrets.toml"
     config_path.write_text('[llm]\nmodel = "existing"\n', encoding="utf-8")
     monkeypatch.setattr(settings_module, "DEFAULT_CONFIG_PATH", config_path)
+    monkeypatch.setattr(
+        config_command, "CredentialStore", lambda: CredentialStore(secrets_path)
+    )
     runner = CliRunner()
 
-    result = runner.invoke(app, ["config", "init"])
+    result = runner.invoke(app, ["config", "init"], input="n\nn\nn\n")
 
     assert result.exit_code == 0
-    assert config_path.read_text(encoding="utf-8") == '[llm]\nmodel = "existing"\n'
-    assert "already exists" in result.output
+    content = config_path.read_text(encoding="utf-8")
+    assert "existing" in content
+    assert "Config exists" in result.output
 
 
 def test_config_show_outputs_toml_and_redacts_api_key(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]

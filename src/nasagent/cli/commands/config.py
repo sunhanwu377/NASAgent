@@ -202,6 +202,8 @@ def init() -> None:
             model=model,
             base_url=base_url or None,
         ),
+        safety=SafetySettings(),
+        observability=ObservabilitySettings(),
     )
     if api_key:
         CredentialStore().set("llm.api_key", api_key)
