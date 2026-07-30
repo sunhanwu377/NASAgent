@@ -1,8 +1,8 @@
 import asyncio
 import atexit
 import locale
-import readline
 import re
+import readline
 import sys
 import tomllib
 from pathlib import Path
@@ -14,9 +14,9 @@ from nasagent.cli.rendering.renderer import CliRenderer, looks_like_markdown
 from nasagent.config.settings import default_config_path, load_settings
 from nasagent.llm.messages import ChatMessage
 from nasagent.llm.openai_provider import OpenAiProvider
+from nasagent.memory import MemoryManager
 from nasagent.platform.context import create_platform_context
 from nasagent.platform.plugins import load_platform_plugins
-from nasagent.memory import MemoryManager
 from nasagent.plugins.commands import register_memory_commands
 
 GREETING_INPUTS = {"hello", "hi", "hey", "你好", "您好", "嗨"}
@@ -86,7 +86,19 @@ def chat(
         "--stream/--no-stream",
         help="Stream conversational LLM responses as they are generated.",
     ),
+    tui: bool = typer.Option(
+        False,
+        "--tui/--no-tui",
+        help="Use Textual TUI interface instead of simple REPL.",
+    ),
 ) -> None:
+    if tui:
+        from nasagent.cli.tui.app import NasaGentTui
+
+        app = NasaGentTui()
+        app.run()
+        return
+
     if profile != "simulator":
         raise typer.BadParameter(
             "Only simulator profile is available before real UGREEN API details are configured"
