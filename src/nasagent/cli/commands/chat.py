@@ -1,6 +1,9 @@
 import asyncio
+import atexit
+import readline
 import re
 import tomllib
+from pathlib import Path
 
 import typer
 
@@ -99,6 +102,10 @@ def chat(
     memory_dir = settings.observability.expanded_memory_dir()
     memory_manager = MemoryManager(memory_dir, None)
     memory_manager.ensure_session("default")
+
+    # Initialize command history
+    _init_readline_history(memory_dir / "history")
+
     renderer.banner(profile=profile, provider=settings_provider, streaming=stream)
     while True:
         renderer.prompt()
@@ -106,6 +113,8 @@ def chat(
             task = input()
         except EOFError:
             break
+        if task.strip():
+            readline.add_history(task)
         task = task.strip()
         if task.lower() in {"exit", "quit"}:
             renderer.status("Goodbye")
@@ -236,3 +245,16 @@ async def _stream_conversation_response(
     renderer.agent_end()
     if memory_manager.conversation_memory:
         memory_manager.conversation_memory.add_message("assistant", "".join(chunks))
+
+
+HISTORY_LIMIT = 1000
+
+
+def _init_readline_history(path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        readline.read_history_file(str(path))
+    except FileNotFoundError:
+        pass
+    readline.set_history_length(HISTORY_LIMIT)
+    atexit.register(readline.write_history_file, str(path))
