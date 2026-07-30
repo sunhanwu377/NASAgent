@@ -27,12 +27,11 @@ class CliRenderer:
         self.console.print("Type exit or quit to leave.", style="dim")
 
     def prompt(self) -> None:
-        self.console.print(_label("you", ">", "bold cyan"), end="")
+        self.console.print(_label("you", ">", "bold green"), end="")
 
     def user_input(self, text: str) -> None:
-        self.console.print(
-            Panel(text, style="dim", border_style="cyan", padding=(0, 1)),
-        )
+        self.console.print(_label("you", ">", "bold green"), end="")
+        self.console.print(text)
 
     def agent_start(self) -> None:
         self.console.print(_label("agent", ">", "bold green"), end="")
@@ -44,13 +43,14 @@ class CliRenderer:
         self.console.print()
 
     def agent_message(self, message: str) -> None:
-        self.agent_start()
         if looks_like_markdown(message):
-            self.console.print()
-            self.console.print(Markdown(message))
+            self.console.print(
+                Panel(Markdown(message), border_style="green", padding=(0, 1)),
+            )
             return
-        self.agent_chunk(message)
-        self.agent_end()
+        self.console.print(
+            Panel(message, style="dim", border_style="green", padding=(0, 1)),
+        )
 
     def status(self, message: str) -> None:
         self.console.print(_line("system", ".", message, "cyan"))
