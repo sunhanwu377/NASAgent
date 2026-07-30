@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  nasagent:
+    image: ghcr.io/nasagent/nasagent:latest
+    container_name: nasagent
+    ports:
+      - "8000:8000"
+    volumes:
+      - nasagent_config:/root/.config/nasagent
+      - nasagent_secrets:/root/.local/share/nasagent
+      - nasagent_data:/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    restart: unless-stopped
+    environment:
+      - TZ=Asia/Shanghai
+
+volumes:
+  nasagent_config:
+  nasagent_secrets:
+  nasagent_data:
