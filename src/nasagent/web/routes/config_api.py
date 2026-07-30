@@ -43,9 +43,7 @@ async def config_llm(
     if api_key:
         CredentialStore().set("llm.api_key", api_key)
 
-    return HTMLResponse(
-        "<script>alert('LLM settings saved'); window.location='/settings'</script>"
-    )
+    return HTMLResponse("<script>alert('LLM settings saved'); window.location='/settings'</script>")
 
 
 @api_router.post("/safety")
@@ -83,9 +81,7 @@ async def config_app_add(
     credential_key: str = Form(""),
 ):
     persist_app_config(name, app_type, base_url, credential_key=credential_key or None)
-    return HTMLResponse(
-        f"<script>alert('App {name} added'); window.location='/settings'</script>"
-    )
+    return HTMLResponse(f"<script>alert('App {name} added'); window.location='/settings'</script>")
 
 
 @api_router.get("/")

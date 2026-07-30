@@ -1,4 +1,4 @@
-from nasagent.config.settings import KNOWN_APP_TYPES, NasAgentSettings, persist_app_config
+from nasagent.config.settings import KNOWN_APP_TYPES, NasAgentSettings
 from nasagent.platform.apps import AppEndpoint
 from nasagent.platform.context import create_platform_context
 from nasagent.plugins.commands import register_builtin_commands
@@ -83,9 +83,7 @@ def test_apps_configure_persists() -> None:
     context = create_platform_context(settings=NasAgentSettings())
     register_builtin_commands(context)
 
-    result = context.commands.dispatch(
-        "/apps configure alist mynas http://nas.local:5244 mytoken"
-    )
+    result = context.commands.dispatch("/apps configure alist mynas http://nas.local:5244 mytoken")
 
     assert result.exit_code == 0
     assert "App configured" in result.message
@@ -98,9 +96,7 @@ def test_apps_configure_rejects_duplicate(tmp_path) -> None:
     )
     register_builtin_commands(context)
 
-    result = context.commands.dispatch(
-        "/apps configure alist home http://nas.local:5244"
-    )
+    result = context.commands.dispatch("/apps configure alist home http://nas.local:5244")
 
     assert result.exit_code == 1
     assert "already configured" in result.message

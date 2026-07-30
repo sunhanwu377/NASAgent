@@ -25,6 +25,7 @@ def create_app() -> FastAPI:
     app.include_router(health_routes.router)
 
     from nasagent.web.templates import configure_templates
+
     configure_templates(app, str(templates_dir))
 
     return app
@@ -32,6 +33,7 @@ def create_app() -> FastAPI:
 
 def main():
     import uvicorn
+
     uvicorn.run("nasagent.web.server:create_app", host="0.0.0.0", port=8000, factory=True)
 
 

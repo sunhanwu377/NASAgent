@@ -64,7 +64,9 @@ class TestSessionMeta:
 
     def test_serialization_roundtrip(self):
         now = datetime.now()
-        meta = SessionMeta(session_id="abc", name="t", created_at=now, last_active_at=now, message_count=5)
+        meta = SessionMeta(
+            session_id="abc", name="t", created_at=now, last_active_at=now, message_count=5
+        )
         restored = SessionMeta.model_validate_json(meta.model_dump_json())
         assert restored.name == "t"
         assert restored.message_count == 5
@@ -244,10 +246,19 @@ class TestSessionStoreDelete:
 class TestSessionStoreLoad:
     def test_loads_existing(self, tmp_path: Path):
         tmp_path.mkdir(parents=True, exist_ok=True)
-        (tmp_path / "sessions.json").write_text(json.dumps([
-            {"session_id": "pre", "name": "old", "created_at": "2024-01-01T00:00:00",
-             "last_active_at": "2024-01-01T00:00:00", "message_count": 3}
-        ]))
+        (tmp_path / "sessions.json").write_text(
+            json.dumps(
+                [
+                    {
+                        "session_id": "pre",
+                        "name": "old",
+                        "created_at": "2024-01-01T00:00:00",
+                        "last_active_at": "2024-01-01T00:00:00",
+                        "message_count": 3,
+                    }
+                ]
+            )
+        )
         (tmp_path / "_current").write_text("pre")
         store = SessionStore(tmp_path)
         assert store.list_all()[0].name == "old"
@@ -259,6 +270,7 @@ class TestSessionStoreTouch:
         store = _make_store(tmp_path)
         s = store.create("active")
         import time
+
         time.sleep(0.01)
         store.touch()
         current = store.get_current()
@@ -300,9 +312,7 @@ class SessionStore:
     def create(self, name: str) -> SessionMeta:
         session_id = uuid4().hex[:12]
         now = datetime.now(timezone.utc)
-        meta = SessionMeta(
-            session_id=session_id, name=name, created_at=now, last_active_at=now
-        )
+        meta = SessionMeta(session_id=session_id, name=name, created_at=now, last_active_at=now)
         self._index[session_id] = meta
         self._save_index()
         self._set_current(session_id)
@@ -321,8 +331,10 @@ class SessionStore:
         now = datetime.now(timezone.utc)
         meta = self._index[session_id]
         updated = SessionMeta(
-            session_id=meta.session_id, name=meta.name,
-            created_at=meta.created_at, last_active_at=now,
+            session_id=meta.session_id,
+            name=meta.name,
+            created_at=meta.created_at,
+            last_active_at=now,
             message_count=meta.message_count,
         )
         self._index[session_id] = updated
@@ -353,8 +365,10 @@ class SessionStore:
             return
         now = datetime.now(timezone.utc)
         updated = SessionMeta(
-            session_id=current.session_id, name=current.name,
-            created_at=current.created_at, last_active_at=now,
+            session_id=current.session_id,
+            name=current.name,
+            created_at=current.created_at,
+            last_active_at=now,
             message_count=current.message_count,
         )
         self._index[current.session_id] = updated
@@ -379,9 +393,9 @@ class SessionStore:
         return result
 
     def _save_index(self) -> None:
-        self._write_json(self._index_path, [
-            meta.model_dump(mode="json") for meta in self._index.values()
-        ])
+        self._write_json(
+            self._index_path, [meta.model_dump(mode="json") for meta in self._index.values()]
+        )
 
     def _read_json(self, path: Path) -> object:
         with open(path, "r", encoding="utf-8") as f:
@@ -507,9 +521,11 @@ class TestPersistentMemoryPreferences:
 class TestPersistentMemoryLoad:
     def test_loads_existing(self, tmp_path: Path):
         tmp_path.mkdir(parents=True, exist_ok=True)
-        (tmp_path / "memories.json").write_text(json.dumps([
-            {"id": "abc", "content": "old", "tags": [], "created_at": "2024-01-01T00:00:00"}
-        ]))
+        (tmp_path / "memories.json").write_text(
+            json.dumps(
+                [{"id": "abc", "content": "old", "tags": [], "created_at": "2024-01-01T00:00:00"}]
+            )
+        )
         assert PersistentMemory(tmp_path).list_all()[0].content == "old"
 ```
 
@@ -587,7 +603,11 @@ class PersistentMemory:
             return []
         try:
             data = self._read_json(self._memories_path)
-            return [MemoryEntry.model_validate(item) for item in data] if isinstance(data, list) else []
+            return (
+                [MemoryEntry.model_validate(item) for item in data]
+                if isinstance(data, list)
+                else []
+            )
         except (json.JSONDecodeError, FileNotFoundError):
             return []
 
@@ -726,8 +746,10 @@ class TestSummarize:
         class FailingLlm:
             async def complete(self, messages):
                 raise RuntimeError("boom")
+
             def stream_complete(self, messages):
                 raise NotImplementedError
+
         cm = _make(tmp_path, FailingLlm(), summary_threshold=3)
         for i in range(5):
             cm.add_message("user", f"msg {i}")
@@ -737,9 +759,9 @@ class TestSummarize:
 class TestLoad:
     def test_loads_messages(self, tmp_path: Path):
         tmp_path.mkdir(parents=True, exist_ok=True)
-        (tmp_path / "messages.json").write_text(json.dumps([
-            {"role": "user", "content": "hi", "timestamp": "2024-01-01T00:00:00"}
-        ]))
+        (tmp_path / "messages.json").write_text(
+            json.dumps([{"role": "user", "content": "hi", "timestamp": "2024-01-01T00:00:00"}])
+        )
         cm = ConversationMemory(tmp_path, FakeLlm())
         assert cm.get_history()[0].content == "hi"
 
@@ -817,9 +839,7 @@ class ConversationMemory:
         if not to_summarize:
             return
         try:
-            message_list = [
-                ChatMessage(role=m.role, content=m.content) for m in to_summarize
-            ]
+            message_list = [ChatMessage(role=m.role, content=m.content) for m in to_summarize]
             prompt = (
                 "Summarize the following conversation in 2-3 sentences, "
                 "preserving key facts, decisions, and context. "
@@ -862,7 +882,10 @@ class ConversationMemory:
         )
         self._write_json(
             self._summary_path,
-            {"summary": self._conversation.summary, "summary_index": self._conversation.summary_index},
+            {
+                "summary": self._conversation.summary,
+                "summary_index": self._conversation.summary_index,
+            },
         )
 
     def _read_json(self, path: Path) -> object:
@@ -1211,7 +1234,8 @@ from nasagent.memory.manager import MemoryManager
 def register_memory_commands(context: PlatformContext, memory_manager: MemoryManager) -> None:
     context.commands.register(
         CommandDefinition(
-            "session", "Manage chat sessions",
+            "session",
+            "Manage chat sessions",
             "/session new|switch|list|delete <name>",
             lambda args: _session(memory_manager, args),
             aliases=("sessions",),
@@ -1219,28 +1243,32 @@ def register_memory_commands(context: PlatformContext, memory_manager: MemoryMan
     )
     context.commands.register(
         CommandDefinition(
-            "remember", "Add persistent memory",
+            "remember",
+            "Add persistent memory",
             "/remember <content>",
             lambda args: _remember(memory_manager, args),
         )
     )
     context.commands.register(
         CommandDefinition(
-            "forget", "Delete persistent memory by ID",
+            "forget",
+            "Delete persistent memory by ID",
             "/forget <id>",
             lambda args: _forget(memory_manager, args),
         )
     )
     context.commands.register(
         CommandDefinition(
-            "memories", "List all persistent memories",
+            "memories",
+            "List all persistent memories",
             "/memories",
             lambda args: _memories(memory_manager, args),
         )
     )
     context.commands.register(
         CommandDefinition(
-            "pref", "Manage user preferences",
+            "pref",
+            "Manage user preferences",
             "/pref set|get|list|delete <key> [value]",
             lambda args: _pref(memory_manager, args),
             aliases=("prefs", "preference"),
@@ -1327,7 +1355,9 @@ def _pref(mgr: MemoryManager, args: tuple[str, ...]) -> CommandResult:
         if len(args) < 2:
             return CommandResult("Usage: /pref get <key>", exit_code=1)
         value = mgr.persistent_memory.get_preference(args[1])
-        return CommandResult(f"{args[1]} = {value}" if value is not None else f"{args[1]} (not set)")
+        return CommandResult(
+            f"{args[1]} = {value}" if value is not None else f"{args[1]} (not set)"
+        )
     elif action == "list":
         prefs = mgr.persistent_memory.get_all_preferences()
         if not prefs:
@@ -1554,8 +1584,10 @@ async def run_agent_once(
     memory_manager: "MemoryManager | None" = None,
 ) -> AgentState:
     graph = build_agent_graph(
-        adapter=adapter, provider=provider,
-        safety_settings=safety_settings, approval_provider=approval_provider,
+        adapter=adapter,
+        provider=provider,
+        safety_settings=safety_settings,
+        approval_provider=approval_provider,
         memory_manager=memory_manager,
     )
 ```

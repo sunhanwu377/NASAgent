@@ -84,7 +84,10 @@ def execute_simulator_task(
             task,
             adapter=SimulatorNasAdapter(),
             provider=select_planner_provider(
-                task, active_settings, online=online, provider_factory=provider_factory,
+                task,
+                active_settings,
+                online=online,
+                provider_factory=provider_factory,
             ),
             safety_settings=active_settings.safety,
             run_log_dir=active_settings.observability.expanded_run_log_dir(),

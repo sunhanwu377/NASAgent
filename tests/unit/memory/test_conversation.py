@@ -80,8 +80,10 @@ class TestSummarize:
         class FailingLlm:
             async def complete(self, messages):
                 raise RuntimeError("boom")
+
             def stream_complete(self, messages):
                 raise NotImplementedError
+
         cm = _make(tmp_path, FailingLlm(), summary_threshold=3)
         for i in range(5):
             cm.add_message("user", f"msg {i}")
@@ -91,9 +93,9 @@ class TestSummarize:
 class TestLoad:
     def test_loads_messages(self, tmp_path: Path):
         tmp_path.mkdir(parents=True, exist_ok=True)
-        (tmp_path / "messages.json").write_text(json.dumps([
-            {"role": "user", "content": "hi", "timestamp": "2024-01-01T00:00:00"}
-        ]))
+        (tmp_path / "messages.json").write_text(
+            json.dumps([{"role": "user", "content": "hi", "timestamp": "2024-01-01T00:00:00"}])
+        )
         cm = ConversationMemory(tmp_path, FakeLlm())
         assert cm.get_history()[0].content == "hi"
 

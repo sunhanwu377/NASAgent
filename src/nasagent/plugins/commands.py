@@ -53,7 +53,7 @@ def _apps_overview(context: PlatformContext) -> CommandResult:
     for app_type, meta in KNOWN_APP_TYPES.items():
         if app_type in configured:
             endpoint = configured[app_type]
-            status = f"  configured ✓"
+            status = "  configured ✓"
             detail = f"    name={endpoint.name}  base_url={endpoint.base_url}"
             if endpoint.credential_key:
                 detail += f"  credential={endpoint.credential_key}"
@@ -72,9 +72,7 @@ def _apps_detail(context: PlatformContext, app_type: str) -> CommandResult:
     meta = KNOWN_APP_TYPES.get(app_type)
     if meta is None:
         known = ", ".join(KNOWN_APP_TYPES.keys())
-        return CommandResult(
-            f"Unknown app type: {app_type}\nSupported types: {known}", exit_code=1
-        )
+        return CommandResult(f"Unknown app type: {app_type}\nSupported types: {known}", exit_code=1)
 
     endpoints = context.apps.list(app_type=app_type)
     lines = [f"{app_type}: {meta['description']}", f"Default port: {meta['default_port']}", ""]
@@ -90,14 +88,10 @@ def _apps_detail(context: PlatformContext, app_type: str) -> CommandResult:
         lines.append("No endpoints configured.")
         lines.append("")
         lines.append("To configure, run:")
-        lines.append(
-            f"  /apps configure {app_type} <name> <base_url> [credential_key]"
-        )
+        lines.append(f"  /apps configure {app_type} <name> <base_url> [credential_key]")
         lines.append("")
         lines.append("Example:")
-        lines.append(
-            f"  /apps configure {app_type} home http://nas.local:{meta['default_port']}"
-        )
+        lines.append(f"  /apps configure {app_type} home http://nas.local:{meta['default_port']}")
 
     return CommandResult("\n".join(lines))
 
@@ -115,9 +109,7 @@ def _apps_configure(context: PlatformContext, args: tuple[str, ...]) -> CommandR
 
     if app_type not in KNOWN_APP_TYPES:
         known = ", ".join(KNOWN_APP_TYPES.keys())
-        return CommandResult(
-            f"Unknown app type: {app_type}\nSupported types: {known}", exit_code=1
-        )
+        return CommandResult(f"Unknown app type: {app_type}\nSupported types: {known}", exit_code=1)
 
     if context.apps.get(name):
         return CommandResult(
@@ -181,7 +173,8 @@ from nasagent.memory.manager import MemoryManager
 def register_memory_commands(context: PlatformContext, memory_manager: MemoryManager) -> None:
     context.commands.register(
         CommandDefinition(
-            "session", "Manage chat sessions",
+            "session",
+            "Manage chat sessions",
             "/session new|switch|list|delete <name>",
             lambda args: _session(memory_manager, args),
             aliases=("sessions",),
@@ -189,28 +182,32 @@ def register_memory_commands(context: PlatformContext, memory_manager: MemoryMan
     )
     context.commands.register(
         CommandDefinition(
-            "remember", "Add persistent memory",
+            "remember",
+            "Add persistent memory",
             "/remember <content>",
             lambda args: _remember(memory_manager, args),
         )
     )
     context.commands.register(
         CommandDefinition(
-            "forget", "Delete persistent memory by ID",
+            "forget",
+            "Delete persistent memory by ID",
             "/forget <id>",
             lambda args: _forget(memory_manager, args),
         )
     )
     context.commands.register(
         CommandDefinition(
-            "memories", "List all persistent memories",
+            "memories",
+            "List all persistent memories",
             "/memories",
             lambda args: _memories(memory_manager, args),
         )
     )
     context.commands.register(
         CommandDefinition(
-            "pref", "Manage user preferences",
+            "pref",
+            "Manage user preferences",
             "/pref set|get|list|delete <key> [value]",
             lambda args: _pref(memory_manager, args),
             aliases=("prefs", "preference"),
@@ -297,7 +294,9 @@ def _pref(mgr: MemoryManager, args: tuple[str, ...]) -> CommandResult:
         if len(args) < 2:
             return CommandResult("Usage: /pref get <key>", exit_code=1)
         value = mgr.persistent_memory.get_preference(args[1])
-        return CommandResult(f"{args[1]} = {value}" if value is not None else f"{args[1]} (not set)")
+        return CommandResult(
+            f"{args[1]} = {value}" if value is not None else f"{args[1]} (not set)"
+        )
     elif action == "list":
         prefs = mgr.persistent_memory.get_all_preferences()
         if not prefs:

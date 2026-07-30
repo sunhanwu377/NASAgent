@@ -84,7 +84,9 @@ class TestPersistentMemoryPreferences:
 class TestPersistentMemoryLoad:
     def test_loads_existing(self, tmp_path: Path):
         tmp_path.mkdir(parents=True, exist_ok=True)
-        (tmp_path / "memories.json").write_text(json.dumps([
-            {"id": "abc", "content": "old", "tags": [], "created_at": "2024-01-01T00:00:00"}
-        ]))
+        (tmp_path / "memories.json").write_text(
+            json.dumps(
+                [{"id": "abc", "content": "old", "tags": [], "created_at": "2024-01-01T00:00:00"}]
+            )
+        )
         assert PersistentMemory(tmp_path).list_all()[0].content == "old"

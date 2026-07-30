@@ -74,10 +74,19 @@ class TestSessionStoreDelete:
 class TestSessionStoreLoad:
     def test_loads_existing(self, tmp_path: Path):
         tmp_path.mkdir(parents=True, exist_ok=True)
-        (tmp_path / "sessions.json").write_text(json.dumps([
-            {"session_id": "pre", "name": "old", "created_at": "2024-01-01T00:00:00",
-             "last_active_at": "2024-01-01T00:00:00", "message_count": 3}
-        ]))
+        (tmp_path / "sessions.json").write_text(
+            json.dumps(
+                [
+                    {
+                        "session_id": "pre",
+                        "name": "old",
+                        "created_at": "2024-01-01T00:00:00",
+                        "last_active_at": "2024-01-01T00:00:00",
+                        "message_count": 3,
+                    }
+                ]
+            )
+        )
         (tmp_path / "_current").write_text("pre")
         store = SessionStore(tmp_path)
         assert store.list_all()[0].name == "old"
@@ -89,6 +98,7 @@ class TestSessionStoreTouch:
         store = _make_store(tmp_path)
         s = store.create("active")
         import time
+
         time.sleep(0.01)
         store.touch()
         current = store.get_current()

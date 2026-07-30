@@ -1,6 +1,6 @@
 import fcntl
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from uuid import uuid4
 
@@ -23,10 +23,8 @@ class SessionStore:
 
     def create(self, name: str) -> SessionMeta:
         session_id = uuid4().hex[:12]
-        now = datetime.now(timezone.utc)
-        meta = SessionMeta(
-            session_id=session_id, name=name, created_at=now, last_active_at=now
-        )
+        now = datetime.now(UTC)
+        meta = SessionMeta(session_id=session_id, name=name, created_at=now, last_active_at=now)
         self._index[session_id] = meta
         self._save_index()
         self._set_current(session_id)
@@ -42,11 +40,13 @@ class SessionStore:
     def switch(self, session_id: str) -> SessionMeta:
         if session_id not in self._index:
             raise ValueError(f"Session not found: {session_id}")
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         meta = self._index[session_id]
         updated = SessionMeta(
-            session_id=meta.session_id, name=meta.name,
-            created_at=meta.created_at, last_active_at=now,
+            session_id=meta.session_id,
+            name=meta.name,
+            created_at=meta.created_at,
+            last_active_at=now,
             message_count=meta.message_count,
         )
         self._index[session_id] = updated
@@ -78,10 +78,12 @@ class SessionStore:
         current = self.get_current()
         if current is None:
             return
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
         updated = SessionMeta(
-            session_id=current.session_id, name=current.name,
-            created_at=current.created_at, last_active_at=now,
+            session_id=current.session_id,
+            name=current.name,
+            created_at=current.created_at,
+            last_active_at=now,
             message_count=current.message_count,
         )
         self._index[current.session_id] = updated
@@ -106,12 +108,12 @@ class SessionStore:
         return result
 
     def _save_index(self) -> None:
-        self._write_json(self._index_path, [
-            meta.model_dump(mode="json") for meta in self._index.values()
-        ])
+        self._write_json(
+            self._index_path, [meta.model_dump(mode="json") for meta in self._index.values()]
+        )
 
     def _read_json(self, path: Path) -> object:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             fcntl.flock(f, fcntl.LOCK_SH)
             result = json.load(f)
             fcntl.flock(f, fcntl.LOCK_UN)

@@ -5,7 +5,12 @@ from nasagent.llm.messages import ChatMessage
 
 
 class Planner:
-    def __init__(self, provider: LlmProvider, tool_names: tuple[str, ...] | None = None, extra_context: str = "") -> None:
+    def __init__(
+        self,
+        provider: LlmProvider,
+        tool_names: tuple[str, ...] | None = None,
+        extra_context: str = "",
+    ) -> None:
         self._provider = provider
         self._tool_names = tool_names
         self._extra_context = extra_context

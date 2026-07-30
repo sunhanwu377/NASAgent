@@ -152,7 +152,13 @@ def chat(
             try:
                 if memory_manager.conversation_memory:
                     memory_manager.conversation_memory.add_message("user", task)
-                _print_conversation_response(task, online=online, stream=stream, renderer=renderer, memory_manager=memory_manager)
+                _print_conversation_response(
+                    task,
+                    online=online,
+                    stream=stream,
+                    renderer=renderer,
+                    memory_manager=memory_manager,
+                )
             except tomllib.TOMLDecodeError as exc:
                 config_path = default_config_path()
                 renderer.config_error(config_path, exc)
@@ -206,7 +212,11 @@ def _to_chat_message(msg: dict) -> ChatMessage:
 
 
 def _print_conversation_response(
-    task: str, *, online: bool | None, stream: bool, renderer: CliRenderer,
+    task: str,
+    *,
+    online: bool | None,
+    stream: bool,
+    renderer: CliRenderer,
     memory_manager: MemoryManager,
 ) -> None:
     settings = load_settings()
@@ -230,7 +240,9 @@ def _print_conversation_response(
 
 
 async def _stream_conversation_response(
-    provider: OpenAiProvider, messages: list[ChatMessage], renderer: CliRenderer,
+    provider: OpenAiProvider,
+    messages: list[ChatMessage],
+    renderer: CliRenderer,
     memory_manager: MemoryManager,
 ) -> None:
     stream = provider.stream_complete(messages)

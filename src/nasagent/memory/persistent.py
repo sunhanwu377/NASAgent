@@ -63,7 +63,11 @@ class PersistentMemory:
             return []
         try:
             data = self._read_json(self._memories_path)
-            return [MemoryEntry.model_validate(item) for item in data] if isinstance(data, list) else []
+            return (
+                [MemoryEntry.model_validate(item) for item in data]
+                if isinstance(data, list)
+                else []
+            )
         except (json.JSONDecodeError, FileNotFoundError):
             return []
 
@@ -83,7 +87,7 @@ class PersistentMemory:
         self._write_json(self._preferences_path, self._preferences.data)
 
     def _read_json(self, path: Path) -> object:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             fcntl.flock(f, fcntl.LOCK_SH)
             result = json.load(f)
             fcntl.flock(f, fcntl.LOCK_UN)

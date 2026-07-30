@@ -55,9 +55,7 @@ class ConversationMemory:
         if not to_summarize:
             return
         try:
-            message_list = [
-                ChatMessage(role=m.role, content=m.content) for m in to_summarize
-            ]
+            message_list = [ChatMessage(role=m.role, content=m.content) for m in to_summarize]
             prompt = (
                 "Summarize the following conversation in 2-3 sentences, "
                 "preserving key facts, decisions, and context. "
@@ -100,11 +98,14 @@ class ConversationMemory:
         )
         self._write_json(
             self._summary_path,
-            {"summary": self._conversation.summary, "summary_index": self._conversation.summary_index},
+            {
+                "summary": self._conversation.summary,
+                "summary_index": self._conversation.summary_index,
+            },
         )
 
     def _read_json(self, path: Path) -> object:
-        with open(path, "r", encoding="utf-8") as f:
+        with open(path, encoding="utf-8") as f:
             fcntl.flock(f, fcntl.LOCK_SH)
             result = json.load(f)
             fcntl.flock(f, fcntl.LOCK_UN)

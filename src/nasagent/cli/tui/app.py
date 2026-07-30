@@ -89,14 +89,10 @@ class NasaGentTui(App):
                 from nasagent.config.settings import load_settings
 
                 settings = load_settings()
-                state = await asyncio.to_thread(
-                    execute_simulator_task, text, settings
-                )
+                state = await asyncio.to_thread(execute_simulator_task, text, settings)
                 for step_result in state.step_results:
                     for tool_result in step_result.tool_results:
-                        chat_log.write(
-                            f"[bold magenta]tool[/] > [dim]{tool_result.tool_name}[/]"
-                        )
+                        chat_log.write(f"[bold magenta]tool[/] > [dim]{tool_result.tool_name}[/]")
                 if state.final_summary:
                     chat_log.write(f"[bold cyan]agent[/] > {state.final_summary}")
             except Exception as e:

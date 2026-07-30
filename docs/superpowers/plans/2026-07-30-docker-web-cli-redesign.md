@@ -518,6 +518,7 @@ Add import and update `execute_simulator_task`:
 ```python
 from nasagent.agent.runner import run_agent_with_callback
 
+
 # Replace the body of execute_simulator_task:
 def execute_simulator_task(
     task: str,
@@ -532,7 +533,10 @@ def execute_simulator_task(
             task,
             adapter=SimulatorNasAdapter(),
             provider=select_planner_provider(
-                task, active_settings, online=online, provider_factory=provider_factory,
+                task,
+                active_settings,
+                online=online,
+                provider_factory=provider_factory,
             ),
             safety_settings=active_settings.safety,
             run_log_dir=active_settings.observability.expanded_run_log_dir(),
@@ -595,6 +599,7 @@ def create_app() -> FastAPI:
     app.include_router(config_routes.router, prefix="/settings")
 
     from nasagent.web.templates import configure_templates
+
     configure_templates(app, str(templates_dir))
 
     return app
@@ -602,6 +607,7 @@ def create_app() -> FastAPI:
 
 def main():
     import uvicorn
+
     uvicorn.run("nasagent.web.server:create_app", host="0.0.0.0", port=8000, factory=True)
 
 
@@ -797,7 +803,9 @@ async def chat_websocket(websocket: WebSocket):
     try:
         while True:
             text = await websocket.receive_text()
-            await websocket.send_json({"type": "system", "content": f"Received: {text}. Agent processing..."})
+            await websocket.send_json(
+                {"type": "system", "content": f"Received: {text}. Agent processing..."}
+            )
             await asyncio.sleep(0.5)
             await websocket.send_json({"type": "agent", "content": f"Echo: {text}"})
     except WebSocketDisconnect:
@@ -1122,13 +1130,17 @@ async def config_safety(
     safety["allow_auto_write"] = allow_auto_write
     safety["allow_destructive"] = allow_destructive
     if require_confirmation_for:
-        safety["require_confirmation_for"] = [t.strip() for t in require_confirmation_for.split(",") if t.strip()]
+        safety["require_confirmation_for"] = [
+            t.strip() for t in require_confirmation_for.split(",") if t.strip()
+        ]
     elif "require_confirmation_for" in safety:
         del safety["require_confirmation_for"]
 
     target = default_config_path()
     target.write_text(render_toml(config_data), encoding="utf-8")
-    return HTMLResponse("<script>alert('Safety settings saved'); window.location='/settings'</script>")
+    return HTMLResponse(
+        "<script>alert('Safety settings saved'); window.location='/settings'</script>"
+    )
 
 
 @api_router.post("/app/add")
@@ -1156,7 +1168,12 @@ import tomllib
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
 
-from nasagent.config.settings import load_config_file, load_settings, settings_to_toml_data, KNOWN_APP_TYPES
+from nasagent.config.settings import (
+    load_config_file,
+    load_settings,
+    settings_to_toml_data,
+    KNOWN_APP_TYPES,
+)
 from nasagent.web.templates import get_templates
 
 router = APIRouter(tags=["config"])
@@ -1170,29 +1187,38 @@ async def settings_page(request: Request):
 @router.get("/llm", response_class=HTMLResponse)
 async def settings_llm(request: Request):
     settings = load_settings()
-    return get_templates().TemplateResponse("settings_llm.html", {
-        "request": request,
-        "settings": settings,
-    })
+    return get_templates().TemplateResponse(
+        "settings_llm.html",
+        {
+            "request": request,
+            "settings": settings,
+        },
+    )
 
 
 @router.get("/safety", response_class=HTMLResponse)
 async def settings_safety(request: Request):
     settings = load_settings()
-    return get_templates().TemplateResponse("settings_safety.html", {
-        "request": request,
-        "settings": settings,
-    })
+    return get_templates().TemplateResponse(
+        "settings_safety.html",
+        {
+            "request": request,
+            "settings": settings,
+        },
+    )
 
 
 @router.get("/apps", response_class=HTMLResponse)
 async def settings_apps(request: Request):
     settings = load_settings()
-    return get_templates().TemplateResponse("settings_apps.html", {
-        "request": request,
-        "apps": settings.apps,
-        "app_types": KNOWN_APP_TYPES,
-    })
+    return get_templates().TemplateResponse(
+        "settings_apps.html",
+        {
+            "request": request,
+            "apps": settings.apps,
+            "app_types": KNOWN_APP_TYPES,
+        },
+    )
 ```
 
 - [ ] **Step 3: Update `src/nasagent/web/server.py` to include config API router**
@@ -1201,6 +1227,7 @@ Add after the existing `config_routes` include:
 
 ```python
 from nasagent.web.routes import config_api as config_api_routes
+
 app.include_router(config_api_routes.api_router)
 ```
 
@@ -1460,10 +1487,9 @@ class NasaGentTui(App):
             try:
                 from nasagent.cli.commands.run import execute_simulator_task
                 from nasagent.config.settings import load_settings
+
                 settings = load_settings()
-                state = await asyncio.to_thread(
-                    execute_simulator_task, text, settings
-                )
+                state = await asyncio.to_thread(execute_simulator_task, text, settings)
                 for step_result in state.step_results:
                     for tool_result in step_result.tool_results:
                         chat_log.write(f"[bold magenta]tool[/] > [dim]{tool_result.tool_name}[/]")
@@ -1486,6 +1512,7 @@ class NasaGentTui(App):
     def _update_info(self) -> None:
         try:
             from nasagent.config.settings import load_settings
+
             settings = load_settings()
             provider = settings.llm.provider or "offline"
             model = settings.llm.model
@@ -1520,6 +1547,7 @@ def chat(
 ) -> None:
     if tui:
         from nasagent.cli.tui.app import NasaGentTui
+
         app = NasaGentTui()
         app.run()
         return
@@ -1632,31 +1660,40 @@ def test_config_api_show():
 
 def test_config_llm_post():
     client = TestClient(create_app())
-    response = client.post("/settings/api/config/llm", data={
-        "provider": "openai",
-        "model": "gpt-4.1-mini",
-        "api_key": "test-key",
-        "base_url": "https://api.openai.com/v1",
-    })
+    response = client.post(
+        "/settings/api/config/llm",
+        data={
+            "provider": "openai",
+            "model": "gpt-4.1-mini",
+            "api_key": "test-key",
+            "base_url": "https://api.openai.com/v1",
+        },
+    )
     assert response.status_code == 200
 
 
 def test_config_safety_post():
     client = TestClient(create_app())
-    response = client.post("/settings/api/config/safety", data={
-        "default_mode": "confirm_destructive",
-        "allow_auto_write": "on",
-    })
+    response = client.post(
+        "/settings/api/config/safety",
+        data={
+            "default_mode": "confirm_destructive",
+            "allow_auto_write": "on",
+        },
+    )
     assert response.status_code == 200
 
 
 def test_config_app_add():
     client = TestClient(create_app())
-    response = client.post("/settings/api/config/app/add", data={
-        "name": "test_alist",
-        "app_type": "alist",
-        "base_url": "http://localhost:5244",
-    })
+    response = client.post(
+        "/settings/api/config/app/add",
+        data={
+            "name": "test_alist",
+            "app_type": "alist",
+            "base_url": "http://localhost:5244",
+        },
+    )
     assert response.status_code == 200
 ```
 

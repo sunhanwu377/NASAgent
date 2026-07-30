@@ -50,10 +50,12 @@ class Message(BaseModel):
     content: str
     timestamp: datetime = Field(default_factory=datetime.now)
 
+
 class Conversation(BaseModel):
     messages: list[Message] = Field(default_factory=list)
     summary: str | None = None
-    summary_index: int = 0          # 摘要覆盖到的消息索引
+    summary_index: int = 0  # 摘要覆盖到的消息索引
+
 
 class SessionMeta(BaseModel):
     session_id: str
@@ -62,11 +64,13 @@ class SessionMeta(BaseModel):
     last_active_at: datetime
     message_count: int = 0
 
+
 class MemoryEntry(BaseModel):
     id: str = Field(default_factory=lambda: uuid4().hex[:12])
     content: str
     tags: list[str] = Field(default_factory=list)
     created_at: datetime = Field(default_factory=datetime.now)
+
 
 class Preferences(BaseModel):
     data: dict[str, Any] = Field(default_factory=dict)
@@ -190,6 +194,7 @@ Persist to disk
 
 ```python
 import fcntl
+
 
 def _atomic_write(path: Path, data: str):
     with open(path, "w") as f:
